@@ -1,0 +1,83 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <type name="MageObsidian\ModernFrontend\Service\ModuleList\Loader">
+        <arguments>
+            <argument name="filesystemDriver" xsi:type="object">Magento\Framework\Filesystem\Driver\File</argument>
+        </arguments>
+    </type>
+    <type name="MageObsidian\ModernFrontend\Service\ThemeList\Loader">
+        <arguments>
+            <argument name="filesystemDriver" xsi:type="object">Magento\Framework\Filesystem\Driver\File</argument>
+        </arguments>
+    </type>
+    <type name="MageObsidian\ModernFrontend\Service\ConfigManager">
+        <arguments>
+            <argument name="formatter" xsi:type="object">Magento\Framework\App\DeploymentConfig\Writer\PhpFormatter
+            </argument>
+            <argument name="filesystemDriver" xsi:type="object">Magento\Framework\Filesystem\Driver\File</argument>
+        </arguments>
+    </type>
+
+
+    <type name="Magento\Deploy\Package\Processor\PreProcessor\Less">
+        <plugin
+            name="mage-obsidian_filter_modern_themes_less_files"
+            type="MageObsidian\ModernFrontend\Plugin\Deploy\Package\Processor\FilterFilesThemePlugin"
+        />
+    </type>
+    <type name="Magento\Deploy\Package\Processor\PreProcessor\Css">
+        <plugin
+            name="mage-obsidian_filter_modern_themes_css_files"
+            type="MageObsidian\ModernFrontend\Plugin\Deploy\Package\Processor\FilterFilesThemePlugin"
+        />
+    </type>
+    <type name="Magento\Deploy\Package\Processor\PostProcessor\Map">
+        <plugin
+            name="mage-obsidian_filter_modern_themes_css_files"
+            type="MageObsidian\ModernFrontend\Plugin\Deploy\Package\Processor\FilterFilesThemePlugin"
+        />
+    </type>
+    <type name="Magento\Deploy\Package\Processor\PostProcessor\CssUrls">
+        <plugin
+            name="mage-obsidian_filter_modern_themes_css_files"
+            type="MageObsidian\ModernFrontend\Plugin\Deploy\Package\Processor\FilterFilesThemePlugin"
+        />
+    </type>
+
+    <type name="Magento\Framework\View\Asset\PreProcessor\Pool">
+        <plugin
+            name="mage-obsidian_skip_file_preprocessors"
+            type="MageObsidian\ModernFrontend\Framework\View\Asset\PreProcessor\PoolPlugin"
+        />
+    </type>
+
+    <type name="Magento\Framework\App\DeploymentConfig\Writer">
+        <plugin
+            name="trigger_config_update"
+            type="MageObsidian\ModernFrontend\Plugin\App\DeploymentConfig\WriterPlugin"
+        />
+    </type>
+
+
+    <type name="Magento\Deploy\Package\PackageFile">
+        <plugin 
+            name="validate_file"
+            type="MageObsidian\ModernFrontend\Plugin\Deploy\Package\PackageFilePlugin"
+        />
+    </type>
+
+    <type name="Magento\Deploy\Service\DeployRequireJsConfig">
+        <plugin
+            name="exclude_modern_themes"
+            type="MageObsidian\ModernFrontend\Plugin\Deploy\Service\DeployRequireJsConfigPlugin"
+        />
+    </type>
+
+    <type name="Magento\Deploy\Service\Bundle">
+        <plugin
+            name="exclude_modern_themes"
+            type="MageObsidian\ModernFrontend\Plugin\Deploy\Service\DeployRequireJsConfigPlugin"
+        />
+    </type>
+</config>

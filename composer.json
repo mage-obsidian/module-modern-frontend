@@ -1,0 +1,19 @@
+{
+    "name": "mage-obsidian/module-modern-frontend",
+    "description": "A Magento 2 module that enables modern frontend support.",
+    "require": {
+        "magento/product-community-edition": "^2.4.6"
+    },
+    "type": "magento2-module",
+    "license": [
+        "MIT"
+    ],
+    "autoload": {
+        "files": [
+            "src/registration.php"
+        ],
+        "psr-4": {
+            "MageObsidian\\ModernFrontend\\": "src/"
+        }
+    }
+}
