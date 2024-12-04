@@ -83,7 +83,8 @@ class ConfigManager
             'MODULE_CSS_EXTEND_FILE' => ConfigInterface::MODULE_CSS_EXTEND_FILE,
             'MODULE_CONFIG_FILE' => ConfigInterface::MODULE_CONFIG_FILE,
             'THEME_CONFIG_FILE' => ConfigInterface::THEME_CONFIG_FILE,
-            'THEME_CSS_SOURCE_FILE' => ConfigInterface::THEME_CSS_SOURCE_FILE
+            'THEME_CSS_SOURCE_FILE' => ConfigInterface::THEME_CSS_SOURCE_FILE,
+            'LIB_PATH' => ConfigInterface::LIB_PATH
         ];
         $this->writeFile(
             $this->getConfigFilePath()['json'],
