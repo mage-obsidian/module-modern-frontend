@@ -27,7 +27,7 @@ interface ConfigInterface
     const string MODULE_CSS_EXTEND_FILE = 'module.extend.css';
     const string MODULE_CONFIG_FILE = 'module.config.cjs';
     const string THEME_CONFIG_FILE = 'theme.config.cjs';
-    const string THEME_TAILWIND_SOURCE_FILE = 'theme.source.css';
+    const string THEME_CSS_SOURCE_FILE = 'theme.source.css';
     const string THEME_FILES_PATH = 'Theme';
     const string LIB_PATH = 'lib';
 }
