@@ -14,6 +14,7 @@ use InvalidArgumentException;
 use Magento\Framework\View\Element\Template as MagentoTemplate;
 use Magento\Framework\View\Element\Template\Context;
 use RuntimeException;
+use Magento\Framework\Filesystem\Io\File;
 
 /**
  * Class Template
@@ -21,18 +22,21 @@ use RuntimeException;
  */
 class Template extends MagentoTemplate
 {
-    private readonly ConfigProvider $configProvider;
-
+    /**
+     * Template constructor.
+     *
+     * @param Context $context
+     * @param ConfigProvider $configProvider
+     * @param File $ioFile
+     * @param array $data
+     */
     public function __construct(
         Context $context,
-        ConfigProvider $configProvider,
+        private readonly ConfigProvider $configProvider,
+        private readonly File $ioFile,
         array $data = []
     ) {
-        $this->configProvider = $configProvider;
-        parent::__construct(
-            $context,
-            $data
-        );
+        parent::__construct($context, $data);
     }
 
     /**
@@ -49,10 +53,7 @@ class Template extends MagentoTemplate
         if (!$vitePath) {
             throw new RuntimeException('Vite generated path is not configured.');
         }
-        if (!pathinfo(
-            $path,
-            PATHINFO_EXTENSION
-        )) {
+        if (!pathinfo($path, PATHINFO_EXTENSION)) {
             $path .= '.js';
         }
         return $this->getViewFileUrl("{$vitePath}/{$path}");
@@ -85,17 +86,11 @@ class Template extends MagentoTemplate
             throw new InvalidArgumentException('The component name cannot be empty.');
         }
 
-        $nameParts = explode(
-            '::',
-            $name
-        );
+        $nameParts = explode('::', $name);
         $vendor = count($nameParts) === 2 ? $nameParts[0] : ConfigInterface::THEME_FILES_PATH;
         $path = count($nameParts) === 2 ? $nameParts[1] : $nameParts[0];
 
-        if ($defaultStart && !str_starts_with(
-                $path,
-                "{$defaultStart}/"
-            )) {
+        if ($defaultStart && !str_starts_with($path, "{$defaultStart}/")) {
             $path = "{$defaultStart}/{$path}";
         }
 
@@ -112,20 +107,14 @@ class Template extends MagentoTemplate
      */
     public function renderVueComponent(string $componentName, array $props = []): string
     {
-        $componentPath = $this->resolvePathByName(
-            $componentName,
-            ConfigInterface::VUE_COMPONENTS_PATH
-        );
+        $componentPath = $this->resolvePathByName($componentName, ConfigInterface::VUE_COMPONENTS_PATH);
         $vueUrl = $this->getViewLibFileUrl('vue');
 
         // Generate a unique ID for the Vue component's container.
         $uniqueId = 'vue-component-' . uniqid();
 
         // Convert properties to JSON format for JavaScript.
-        $propsJson = json_encode(
-            $props,
-            JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP
-        );
+        $propsJson = json_encode($props, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
 
         // Return the HTML and JavaScript needed to mount the Vue component.
         return <<<HTML
@@ -133,8 +122,6 @@ class Template extends MagentoTemplate
             <script type="module">
                 import { createApp } from '$vueUrl';
                 import Component from '$componentPath';
-
-                // Create and mount the Vue app with the component and props.
                 try {
                     createApp(Component, $propsJson).mount('#$uniqueId');
                 } catch (error) {
@@ -144,8 +131,62 @@ class Template extends MagentoTemplate
         HTML;
     }
 
+    /**
+     * Get the configuration provider.
+     *
+     * @return ConfigProvider Configuration provider.
+     */
     public function getConfigProvider(): ConfigProvider
     {
         return $this->configProvider;
+    }
+
+    public function getChildHtmlWithExclusions($alias = '', $useCache = true, $excludedBlocks = [])
+    {
+        $layout = $this->getLayout();
+        if (!$layout) {
+            return '';
+        }
+        $name = $this->getNameInLayout();
+        $out = '';
+        if ($alias) {
+            $childName = $layout->getChildName($name, $alias);
+            if ($childName && !in_array($childName, $excludedBlocks, true)) {
+                $out = $layout->renderElement($childName, $useCache);
+            }
+        } else {
+            foreach ($layout->getChildNames($name) as $child) {
+                if (!in_array($child, $excludedBlocks, true)) {
+                    $out .= $layout->renderElement($child, $useCache);
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Get the full URL for a Heroicons SVG icon.
+     *
+     * @param string $iconName Icon name.
+     * @param string $iconSet Icon set (solid, outline).
+     * @param string $size Icon size (16, 20, 24).
+     *
+     * @return string Full file URL.
+     */
+    public function getHeroIcon(
+        string $iconName,
+        string $iconSet = 'solid',
+        string $size = '24',
+    ): string {
+        if (!pathinfo($iconName, PATHINFO_EXTENSION)) {
+            $iconName .= '.svg';
+        }
+        $url = $this->getViewFileUrl("MageObsidian_ModernFrontend::assets/@heroicons/{$size}/{$iconSet}/{$iconName}");
+        return <<<HTML
+            <svg width="$size" height="$size" mlns="http://www.w3.org/2000/svg">
+                <use href="$url#icon"></use>
+            </svg>
+        HTML;
     }
 }

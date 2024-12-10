@@ -14,15 +14,28 @@ use Magento\Framework\Exception\LocalizedException;
 
 class ThemeList
 {
+    /**
+     * @var array|null
+     */
     private ?array $enabled = null;
+    /**
+     * @var array|null
+     */
     private ?array $all = null;
 
+    /**
+     * ThemeList constructor.
+     *
+     * @param Loader $loader
+     */
     public function __construct(
         private readonly Loader $loader,
     ) {
     }
 
     /**
+     * Get all enabled themes.
+     *
      * @throws FileSystemException
      * @throws LocalizedException
      */
@@ -34,10 +47,10 @@ class ThemeList
                 return [];
             }
             $this->enabled = [];
-            foreach ($all as $themeName => $moduleConfig) {
-                $isEnabled = (boolean)$moduleConfig['data']['features']['compatibility'];
+            foreach ($all as $themeName => $themeConfig) {
+                $isEnabled = (boolean)$themeConfig['data']['features']['compatibility'];
                 if ($isEnabled) {
-                    $this->enabled[$themeName] = $moduleConfig;
+                    $this->enabled[$themeName] = $themeConfig;
                 }
             }
         }
@@ -45,6 +58,9 @@ class ThemeList
     }
 
     /**
+     * Get all themes.
+     *
+     * @return array
      * @throws FileSystemException
      * @throws LocalizedException
      */

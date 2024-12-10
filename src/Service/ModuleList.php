@@ -14,15 +14,29 @@ use MageObsidian\ModernFrontend\Service\ModuleList\Loader;
 
 class ModuleList
 {
+    /**
+     * @var array|null
+     */
     private ?array $enabled = null;
+    /**
+     * @var array|null
+     */
     private ?array $all = null;
 
+    /**
+     * ModuleList constructor.
+     *
+     * @param Loader $loader
+     */
     public function __construct(
         private readonly Loader $loader,
     ) {
     }
 
     /**
+     * Get all enabled modules.
+     *
+     * @return array
      * @throws FileSystemException
      * @throws LocalizedException
      */
@@ -45,6 +59,9 @@ class ModuleList
     }
 
     /**
+     * Get all modules.
+     *
+     * @return array
      * @throws FileSystemException
      * @throws LocalizedException
      */

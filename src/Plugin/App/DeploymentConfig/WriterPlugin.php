@@ -13,14 +13,24 @@ use Magento\Framework\App\DeploymentConfig\Writer;
 use Magento\Framework\Exception\FileSystemException;
 use Magento\Framework\Exception\LocalizedException;
 
-readonly class WriterPlugin
+class WriterPlugin
 {
+    /**
+     * WriterPlugin constructor.
+     *
+     * @param ConfigManager $configManager
+     */
     public function __construct(
-        private ConfigManager $configManager
+        private readonly ConfigManager $configManager
     ) {
     }
 
     /**
+     * After save config method.
+     *
+     * @param Writer $subject
+     * @param bool $result
+     *
      * @throws FileSystemException
      * @throws LocalizedException
      */
