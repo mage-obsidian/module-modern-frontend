@@ -61,7 +61,7 @@
 
 
     <type name="Magento\Deploy\Package\PackageFile">
-        <plugin 
+        <plugin
             name="validate_file"
             type="MageObsidian\ModernFrontend\Plugin\Deploy\Package\PackageFilePlugin"
         />
