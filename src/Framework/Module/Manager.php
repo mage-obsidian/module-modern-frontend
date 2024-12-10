@@ -18,11 +18,24 @@ use Magento\Framework\View\DesignInterface;
 
 class Manager extends MagentoManager
 {
+    /**
+     * @var bool|null
+     */
     private ?bool $isEnabled = null;
 
     /**
-     * @throws LocalizedException
+     * Manager constructor.
+     *
+     * @param Output\ConfigInterface $outputConfig
+     * @param ModuleListInterface $moduleList
+     * @param DesignInterface $design
+     * @param ConfigManager $configManager
+     * @param array $outputConfigPaths
+     *
+     * @return void
+     *
      * @throws FileSystemException
+     * @throws LocalizedException
      */
     public function __construct(
         Output\ConfigInterface $outputConfig,
@@ -31,15 +44,15 @@ class Manager extends MagentoManager
         private readonly ConfigManager $configManager,
         array $outputConfigPaths = []
     ) {
-        parent::__construct(
-            $outputConfig,
-            $moduleList,
-            $outputConfigPaths
-        );
+        parent::__construct($outputConfig, $moduleList, $outputConfigPaths);
         $this->load();
     }
 
     /**
+     * Load the configuration of the current theme.
+     *
+     * @return void
+     *
      * @throws FileSystemException
      * @throws LocalizedException
      */
@@ -53,6 +66,8 @@ class Manager extends MagentoManager
     }
 
     /**
+     * Check if the current theme is enabled.
+     *
      * @throws LocalizedException
      * @throws FileSystemException
      */
@@ -66,6 +81,11 @@ class Manager extends MagentoManager
     }
 
     /**
+     * Check if the output is enabled for a module.
+     *
+     * @param string $moduleName
+     *
+     * @return bool
      * @throws LocalizedException
      * @throws FileSystemException
      */

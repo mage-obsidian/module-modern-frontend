@@ -14,27 +14,39 @@ use Magento\Framework\App\State;
 use Magento\Framework\View\Element\Block\ArgumentInterface;
 use Magento\Store\Model\ScopeInterface;
 
-readonly class ConfigProvider implements ArgumentInterface
+class ConfigProvider implements ArgumentInterface
 {
-    const string ROOT_PATH = 'mage-obsidian/';
+    public const string ROOT_PATH = 'mage-obsidian/';
+    public const string HMR_ENABLED = self::ROOT_PATH . 'hmr/enabled';
 
+    /**
+     * @param ScopeConfigInterface $scopeConfig
+     * @param State $state
+     */
     public function __construct(
-        private ScopeConfigInterface $scopeConfig,
-        private State $state
+        private readonly ScopeConfigInterface $scopeConfig,
+        private readonly State $state
     ) {
     }
 
+    /**
+     * Get the value of HMR enabled configuration.
+     *
+     * @return bool
+     */
     public function isHmrEnabled(): bool
     {
         if ($this->state->getMode() === State::MODE_PRODUCTION) {
             return false;
         }
-        return (bool)$this->scopeConfig->getValue(
-            self::ROOT_PATH . 'hmr/enabled',
-            ScopeInterface::SCOPE_STORE
-        );
+        return (bool)$this->scopeConfig->getValue(self::ROOT_PATH . 'hmr/enabled', ScopeInterface::SCOPE_STORE);
     }
 
+    /**
+     * Get path to the generated files.
+     *
+     * @return string
+     */
     public function getViteGeneratedPath(): string
     {
         if ($this->isHmrEnabled()) {

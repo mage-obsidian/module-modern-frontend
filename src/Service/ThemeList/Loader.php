@@ -19,29 +19,38 @@ use Magento\Framework\Module\ModuleList;
 use Magento\Framework\Xml\Parser;
 use Magento\Framework\Config\Dom;
 use Magento\Framework\Config\ValidationStateInterface;
+use Magento\Framework\Xml\ParserFactory;
 use Magento\Theme\Model\ResourceModel\Theme\Collection;
 use Magento\Theme\Model\ResourceModel\Theme\CollectionFactory;
+use Magento\Theme\Model\Theme;
 
 class Loader extends \MageObsidian\ModernFrontend\Service\ModuleList\Loader
 {
-    const string XML_SCHEMA_PATH = '/etc/xsd/mage_obsidian_theme_compatibility.xsd';
+    public const string XML_SCHEMA_PATH = '/etc/xsd/mage_obsidian_theme_compatibility.xsd';
 
+    /**
+     * Loader constructor.
+     *
+     * @param ComponentRegistrarInterface $moduleRegistry
+     * @param ModuleList $moduleList
+     * @param DriverInterface $filesystemDriver
+     * @param Parser $parser
+     * @param ValidationStateInterface $validationState
+     * @param ParserFactory $parserFactory
+     * @param CollectionFactory $themeCollection
+     * @param DirectoryList $directoryList
+     */
     public function __construct(
         ComponentRegistrarInterface $moduleRegistry,
         ModuleList $moduleList,
         DriverInterface $filesystemDriver,
         Parser $parser,
         ValidationStateInterface $validationState,
+        ParserFactory $parserFactory,
         protected readonly CollectionFactory $themeCollection,
         protected readonly DirectoryList $directoryList,
     ) {
-        parent::__construct(
-            $moduleRegistry,
-            $moduleList,
-            $filesystemDriver,
-            $parser,
-            $validationState
-        );
+        parent::__construct($moduleRegistry, $moduleList, $filesystemDriver, $parser, $validationState, $parserFactory);
     }
 
     /**
@@ -55,11 +64,7 @@ class Loader extends \MageObsidian\ModernFrontend\Service\ModuleList\Loader
         $schemaPath = $this->getSchemaPath();
         foreach ($this->getThemeConfigs() as list($themeCode, $parentThemeCode, $filePath, $contents)) {
             try {
-                new Dom(
-                                $contents,
-                                $this->validationState,
-                    schemaFile: $schemaPath
-                );
+                new Dom($contents, $this->validationState, schemaFile: $schemaPath);
                 $data = $this->parser->loadXML($contents)
                                      ->xmlToArray();
                 $data = $data['config']['_value'];
@@ -70,26 +75,28 @@ class Loader extends \MageObsidian\ModernFrontend\Service\ModuleList\Loader
                     'path' => $filePath,
                 ];
             } catch (\Exception $e) {
-                throw new \Magento\Framework\Exception\LocalizedException(
-                    new \Magento\Framework\Phrase(
-                        'Invalid Document in %1: %2',
-                        [$filePath, $e->getMessage()]
-                    ),
-                    $e
-                );
+                throw new \Magento\Framework\Exception\LocalizedException(new \Magento\Framework\Phrase(
+                    'Invalid Document in %1: %2',
+                    [$filePath, $e->getMessage()]
+                ), $e);
             }
         }
 
         return $result;
     }
 
+    /**
+     * Returns a collection of themes.
+     *
+     * @return Collection
+     */
     private function getThemeCollection(): Collection
     {
         $collection = $this->themeCollection->create();
         $collection->addFieldToSelect([
-                                          'code',
-                                          'theme_path'
-                                      ])
+            'code',
+            'theme_path'
+        ])
                    ->filterPhysicalThemes()
                    ->getSelect()
                    ->joinLeft(
@@ -104,18 +111,16 @@ class Loader extends \MageObsidian\ModernFrontend\Service\ModuleList\Loader
      * Returns theme config data and a path to the mage-obsidian_compatibility.xml file.
      *
      * @return Generator
+     * @throws FileSystemException
      */
     private function getThemeConfigs(): Generator
     {
         /**
-         * @var $themes \Magento\Theme\Model\Theme[]
+         * @var Theme[] $themes
          */
         $themes = $this->getThemeCollection();
         foreach ($themes as $theme) {
-            $rootPath = $this->moduleRegistry->getPath(
-                ComponentRegistrar::THEME,
-                "frontend/{$theme->getCode()}"
-            );
+            $rootPath = $this->moduleRegistry->getPath(ComponentRegistrar::THEME, "frontend/{$theme->getCode()}");
             $filePath = $rootPath . self::XML_FILE_PATH;
             if (!$this->filesystemDriver->isExists($filePath)) {
                 continue;
@@ -129,5 +134,3 @@ class Loader extends \MageObsidian\ModernFrontend\Service\ModuleList\Loader
         }
     }
 }
-
-

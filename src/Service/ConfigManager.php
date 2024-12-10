@@ -23,9 +23,28 @@ class ConfigManager
     public const string CONFIG_FILE = 'app/etc/mage_obsidian_frontend_modules';
     public const string JSON_EXTENSION = '.json';
     public const string PHP_EXTENSION = '.php';
+    /**
+     * @var array
+     */
     public array $CONFIG_PATHS;
+    /**
+     * @var array
+     */
     private array $configData = [];
 
+    /**
+     * ConfigManager constructor.
+     *
+     * @param ModuleList $moduleList
+     * @param ThemeList $themeList
+     * @param MagentoModuleList $magentoModuleList
+     * @param DirectoryList $directoryList
+     * @param DriverInterface $filesystemDriver
+     * @param FormatterInterface $formatter
+     * @param State $state
+     *
+     * @throws LocalizedException
+     */
     public function __construct(
         private readonly ModuleList $moduleList,
         private readonly ThemeList $themeList,
@@ -37,13 +56,14 @@ class ConfigManager
     ) {
         $this->CONFIG_PATHS = [
             'php' => $this->directoryList->getPath(DirectoryList::ROOT) . '/' . self::CONFIG_FILE . self::PHP_EXTENSION,
-            'json' => $this->directoryList->getPath(
-                    DirectoryList::ROOT
-                ) . '/' . self::CONFIG_FILE . self::JSON_EXTENSION
+            'json' => $this->directoryList->getPath(DirectoryList::ROOT) . '/' . self::CONFIG_FILE . self::JSON_EXTENSION
         ];
     }
 
     /**
+     * Generate the configuration file.
+     *
+     * @return array
      * @throws LocalizedException
      * @throws FileSystemException
      */
@@ -52,27 +72,18 @@ class ConfigManager
         $enabledModules = $this->moduleList->getAllEnabled();
         $enabledThemes = $this->themeList->getAllEnabled();
 
-        $configModules = array_map(
-            fn($module) => ['src' => $module['path']],
-            $enabledModules
-        );
+        $configModules = array_map(fn($module) => ['src' => $module['path']], $enabledModules);
 
-        $configThemes = array_map(
-            fn($theme) => [
-                'src' => $theme['path'],
-                'parent' => $theme['parent_code']
-            ],
-            $enabledThemes
-        );
+        $configThemes = array_map(fn($theme) => [
+            'src' => $theme['path'],
+            'parent' => $theme['parent_code']
+        ], $enabledThemes);
 
         $configData = [
             'modules' => $configModules,
             'themes' => $configThemes
         ];
-        $this->writeFile(
-            $this->getConfigFilePath()['php'],
-            $this->formatter->format($configData)
-        );
+        $this->writeFile($this->getConfigFilePath()['php'], $this->formatter->format($configData));
         $configData = [
             ...$configData,
             'allModules' => $this->magentoModuleList->getNames(),
@@ -86,20 +97,19 @@ class ConfigManager
             'THEME_CSS_SOURCE_FILE' => ConfigInterface::THEME_CSS_SOURCE_FILE,
             'LIB_PATH' => ConfigInterface::LIB_PATH
         ];
-        $this->writeFile(
-            $this->getConfigFilePath()['json'],
-            json_encode(
-                $configData,
-                JSON_PRETTY_PRINT
-            )
-        );
+        $this->writeFile($this->getConfigFilePath()['json'], json_encode($configData, JSON_PRETTY_PRINT));
         $this->configData = $configData;
         return $this->configData;
     }
 
     /**
-     * @throws LocalizedException
+     * Check if a module is enabled.
+     *
+     * @param string $moduleName
+     *
+     * @return bool
      * @throws FileSystemException
+     * @throws LocalizedException
      */
     public function isModuleEnabled(string $moduleName): bool
     {
@@ -108,8 +118,13 @@ class ConfigManager
     }
 
     /**
-     * @throws LocalizedException
+     * Check if a theme is enabled.
+     *
+     * @param string $themeName
+     *
+     * @return bool
      * @throws FileSystemException
+     * @throws LocalizedException
      */
     public function isThemeEnabled(string $themeName): bool
     {
@@ -118,6 +133,9 @@ class ConfigManager
     }
 
     /**
+     * Get the configuration data.
+     *
+     * @return array
      * @throws FileSystemException
      * @throws LocalizedException
      */
@@ -129,9 +147,7 @@ class ConfigManager
         $missingFile = !$this->hasConfig();
 
         if ($missingFile && $this->state->getMode() === State::MODE_PRODUCTION) {
-            throw new RuntimeException(
-                "Missing configuration file, please run the command 'mage-obsidian:frontend:config --generate.'"
-            );
+            throw new RuntimeException("Missing configuration file, please run the command 'mage-obsidian:frontend:config --generate.'");
         } elseif ($missingFile) {
             return $this->generate();
         }
@@ -151,9 +167,7 @@ class ConfigManager
     {
         $configFilePaths = $this->getConfigFilePath();
 
-        return $this->filesystemDriver->isExists($configFilePaths['php']) && $this->filesystemDriver->isExists(
-                $configFilePaths['json']
-            );
+        return $this->filesystemDriver->isExists($configFilePaths['php']) && $this->filesystemDriver->isExists($configFilePaths['json']);
     }
 
     /**
@@ -166,10 +180,7 @@ class ConfigManager
     private function writeFile(string $filePath, string $data): void
     {
         try {
-            $this->filesystemDriver->filePutContents(
-                $filePath,
-                $data
-            );
+            $this->filesystemDriver->filePutContents($filePath, $data);
         } catch (\Exception $e) {
             throw new RuntimeException("Failed to write file: $filePath. Error: " . $e->getMessage());
         }
