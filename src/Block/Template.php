@@ -8,13 +8,13 @@
 
 namespace MageObsidian\ModernFrontend\Block;
 
-use MageObsidian\ModernFrontend\Api\Data\ConfigInterface;
+use Magento\Framework\Exception\LocalizedException;
 use MageObsidian\ModernFrontend\Model\Config\ConfigProvider;
 use InvalidArgumentException;
 use Magento\Framework\View\Element\Template as MagentoTemplate;
 use Magento\Framework\View\Element\Template\Context;
+use MageObsidian\ModernFrontend\ViewModel\ViteResolver;
 use RuntimeException;
-use Magento\Framework\Filesystem\Io\File;
 
 /**
  * Class Template
@@ -26,17 +26,28 @@ class Template extends MagentoTemplate
      * Template constructor.
      *
      * @param Context $context
-     * @param ConfigProvider $configProvider
-     * @param File $ioFile
+     * @param ViteResolver $viteResolver
      * @param array $data
      */
     public function __construct(
         Context $context,
-        private readonly ConfigProvider $configProvider,
-        private readonly File $ioFile,
+        private readonly ViteResolver $viteResolver,
         array $data = []
     ) {
         parent::__construct($context, $data);
+    }
+
+    /**
+     * Retrieve url of a view file
+     *
+     * @param string $fileId
+     * @param array $params
+     *
+     * @return string
+     */
+    public function getViewFileUrl($fileId, array $params = []): string
+    {
+        return $this->viteResolver->getViewFileUrl($fileId, $params);
     }
 
     /**
@@ -49,14 +60,7 @@ class Template extends MagentoTemplate
      */
     public function getViteFileUrl(string $path): string
     {
-        $vitePath = $this->configProvider->getViteGeneratedPath();
-        if (!$vitePath) {
-            throw new RuntimeException('Vite generated path is not configured.');
-        }
-        if (!pathinfo($path, PATHINFO_EXTENSION)) {
-            $path .= '.js';
-        }
-        return $this->getViewFileUrl("{$vitePath}/{$path}");
+        return $this->viteResolver->getViteFileUrl($path);
     }
 
     /**
@@ -68,7 +72,7 @@ class Template extends MagentoTemplate
      */
     public function getViewLibFileUrl(string $path): string
     {
-        return $this->getViteFileUrl(ConfigInterface::LIB_PATH . '/' . $path);
+        return $this->viteResolver->getViewLibFileUrl($path);
     }
 
     /**
@@ -82,19 +86,17 @@ class Template extends MagentoTemplate
      */
     public function resolvePathByName(string $name, ?string $defaultStart = null): string
     {
-        if (empty($name)) {
-            throw new InvalidArgumentException('The component name cannot be empty.');
-        }
+        return $this->viteResolver->resolvePathByName($name, $defaultStart);
+    }
 
-        $nameParts = explode('::', $name);
-        $vendor = count($nameParts) === 2 ? $nameParts[0] : ConfigInterface::THEME_FILES_PATH;
-        $path = count($nameParts) === 2 ? $nameParts[1] : $nameParts[0];
-
-        if ($defaultStart && !str_starts_with($path, "{$defaultStart}/")) {
-            $path = "{$defaultStart}/{$path}";
-        }
-
-        return $this->getViteFileUrl("{$vendor}/{$path}");
+    /**
+     * Resolve the path for a component by its name.
+     *
+     * @param string $name Component name in the format "Vendor::Component".
+     */
+    public function resolveComponentPath(string $name): string
+    {
+        return $this->viteResolver->resolveComponentPath($name);
     }
 
     /**
@@ -107,28 +109,7 @@ class Template extends MagentoTemplate
      */
     public function renderVueComponent(string $componentName, array $props = []): string
     {
-        $componentPath = $this->resolvePathByName($componentName, ConfigInterface::VUE_COMPONENTS_PATH);
-        $vueUrl = $this->getViewLibFileUrl('vue');
-
-        // Generate a unique ID for the Vue component's container.
-        $uniqueId = 'vue-component-' . uniqid();
-
-        // Convert properties to JSON format for JavaScript.
-        $propsJson = json_encode($props, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
-
-        // Return the HTML and JavaScript needed to mount the Vue component.
-        return <<<HTML
-            <div id="$uniqueId"></div>
-            <script type="module">
-                import { createApp } from '$vueUrl';
-                import Component from '$componentPath';
-                try {
-                    createApp(Component, $propsJson).mount('#$uniqueId');
-                } catch (error) {
-                    console.error('Failed to mount Vue component:', error);
-                }
-            </script>
-        HTML;
+        return $this->viteResolver->renderVueComponent($componentName, $props);
     }
 
     /**
@@ -138,11 +119,41 @@ class Template extends MagentoTemplate
      */
     public function getConfigProvider(): ConfigProvider
     {
-        return $this->configProvider;
+        return $this->viteResolver->getConfigProvider();
     }
 
-    public function getChildHtmlWithExclusions($alias = '', $useCache = true, $excludedBlocks = [])
-    {
+    /**
+     * Get the full URL for a Heroicons SVG icon.
+     *
+     * @param string $iconName Icon name.
+     * @param string $iconSet Icon set (solid, outline).
+     * @param string $size Icon size (16, 20, 24).
+     *
+     * @return string Full file URL.
+     */
+    public function getHeroIcon(
+        string $iconName,
+        string $iconSet = 'solid',
+        string $size = '24',
+    ): string {
+        return $this->viteResolver->getHeroIcon($iconName, $iconSet, $size);
+    }
+
+    /**
+     * Get Child Html with Exclusions
+     *
+     * @param string $alias
+     * @param bool $useCache
+     * @param array $excludedBlocks
+     *
+     * @return string
+     * @throws LocalizedException
+     */
+    public function getChildHtmlWithExclusions(
+        string $alias = '',
+        bool $useCache = true,
+        array $excludedBlocks = []
+    ): string {
         $layout = $this->getLayout();
         if (!$layout) {
             return '';
@@ -163,30 +174,5 @@ class Template extends MagentoTemplate
         }
 
         return $out;
-    }
-
-    /**
-     * Get the full URL for a Heroicons SVG icon.
-     *
-     * @param string $iconName Icon name.
-     * @param string $iconSet Icon set (solid, outline).
-     * @param string $size Icon size (16, 20, 24).
-     *
-     * @return string Full file URL.
-     */
-    public function getHeroIcon(
-        string $iconName,
-        string $iconSet = 'solid',
-        string $size = '24',
-    ): string {
-        if (!pathinfo($iconName, PATHINFO_EXTENSION)) {
-            $iconName .= '.svg';
-        }
-        $url = $this->getViewFileUrl("MageObsidian_ModernFrontend::assets/@heroicons/{$size}/{$iconSet}/{$iconName}");
-        return <<<HTML
-            <svg width="$size" height="$size" mlns="http://www.w3.org/2000/svg">
-                <use href="$url#icon"></use>
-            </svg>
-        HTML;
     }
 }
