@@ -1,0 +1,20 @@
+@source '../../../../Block/Html/Topmenu.php';
+
+@source inline("group/main");
+@source inline("group-hover/main:flex");
+@source inline("group-hover/main:text-blue-600");
+
+@source inline("group/sub");
+@source inline("group-hover/sub:flex");
+@source inline("group-hover/sub:text-blue-600");
+
+@source inline("group/sub-sub");
+@source inline("group-hover/sub-sub:flex");
+@source inline("group-hover/sub-sub:text-blue-600");
+
+@source inline("group/sub-sub-sub");
+@source inline("group-hover/sub-sub-sub:flex");
+@source inline("group-hover/sub-sub-sub:text-blue-600");
+
+body {
+}
