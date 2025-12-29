@@ -17,6 +17,11 @@ use Magento\Framework\Exception\LocalizedException;
 
 readonly class PackageFilePlugin
 {
+    private const EXCLUDED_MODULE_CONFIG = 'module\.config\..*';
+    private const EXCLUDED_CSS = 'css/.*\.css';
+    private const EXCLUDED_THEME_CONFIG = 'theme\.config\.cjs';
+    private const EXCLUDED_NODE_MODULES = 'node_modules/.*';
+
     public function __construct(
         private ConfigManager $configManager
     ) {
@@ -125,48 +130,25 @@ readonly class PackageFilePlugin
 
         if (!$theme) {
             foreach ($basePaths as $path) {
-                $patterns[] = preg_quote(
-                        $path,
-                        '#'
-                    ) . 'module\.config\..*';
-                $patterns[] = preg_quote(
-                        $path,
-                        '#'
-                    ) . 'css/.*\.css';
-                $patterns[] = preg_quote(
-                        $path,
-                        '#'
-                    ) . ConfigInterface::VUE_COMPONENTS_PATH . '/.*';
-                $patterns[] = preg_quote(
-                        $path,
-                        '#'
-                    ) . ConfigInterface::JS_PATH . '/.*';
+                $quotedPath = preg_quote($path, '#');
+                $patterns[] = $quotedPath . self::EXCLUDED_MODULE_CONFIG;
+                $patterns[] = $quotedPath . self::EXCLUDED_CSS;
+                $patterns[] = $quotedPath . ConfigInterface::VUE_COMPONENTS_PATH . '/.*';
+                $patterns[] = $quotedPath . ConfigInterface::JS_PATH . '/.*';
+                $patterns[] = $quotedPath . self::EXCLUDED_NODE_MODULES;
             }
         } else {
-            $patterns[] = preg_quote(
-                    $module,
-                    '#'
-                ) . '/web/module\.config\..*';
-            $patterns[] = preg_quote(
-                    $module,
-                    '#'
-                ) . '/web/css/.*\.css';
-            $patterns[] = preg_quote(
-                    $module,
-                    '#'
-                ) . '/web/' . ConfigInterface::VUE_COMPONENTS_PATH . '/.*';
-            $patterns[] = preg_quote(
-                    $module,
-                    '#'
-                ) . '/web/' . ConfigInterface::JS_PATH . '/.*';
-            $patterns[] = preg_quote(
-                    $theme,
-                    '#'
-                ) . '/web/theme\.config\.cjs';
-            $patterns[] = preg_quote(
-                    $theme,
-                    '#'
-                ) . '/web/css/.*\.css';
+            $quotedModule = preg_quote($module, '#');
+            $patterns[] = $quotedModule . '/web/' . self::EXCLUDED_MODULE_CONFIG;
+            $patterns[] = $quotedModule . '/web/' . self::EXCLUDED_CSS;
+            $patterns[] = $quotedModule . '/web/' . ConfigInterface::VUE_COMPONENTS_PATH . '/.*';
+            $patterns[] = $quotedModule . '/web/' . ConfigInterface::JS_PATH . '/.*';
+            $patterns[] = $quotedModule . '/web/' . self::EXCLUDED_NODE_MODULES;
+
+            $quotedTheme = preg_quote($theme, '#');
+            $patterns[] = $quotedTheme . '/web/' . self::EXCLUDED_THEME_CONFIG;
+            $patterns[] = $quotedTheme . '/web/' . self::EXCLUDED_CSS;
+            $patterns[] = $quotedTheme . '/web/' . self::EXCLUDED_NODE_MODULES;
         }
 
         return $patterns;
