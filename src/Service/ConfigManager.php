@@ -86,6 +86,9 @@ class ConfigManager
         $this->writeFile($this->getConfigFilePath()['php'], $this->formatter->format($configData));
         $configData = [
             ...$configData,
+            // Magento app mode (developer|default|production); the JS build reads
+            // this to drive isDev(). Without it configResolver.js defaults to dev.
+            'mode' => $this->state->getMode(),
             'allModules' => $this->magentoModuleList->getNames(),
             'VUE_COMPONENTS_PATH' => ConfigInterface::VUE_COMPONENTS_PATH,
             'JS_PATH' => ConfigInterface::JS_PATH,
