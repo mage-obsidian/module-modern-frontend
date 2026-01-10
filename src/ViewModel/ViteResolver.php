@@ -11,6 +11,7 @@ namespace MageObsidian\ModernFrontend\ViewModel;
 
 use InvalidArgumentException;
 use Magento\Framework\App\RequestInterface;
+use Magento\Framework\Math\Random;
 use Magento\Framework\View\Asset\Repository;
 use Magento\Framework\View\Element\Block\ArgumentInterface;
 use MageObsidian\ModernFrontend\Api\Data\ConfigInterface;
@@ -25,11 +26,13 @@ class ViteResolver implements ArgumentInterface
      * @param Repository $assetRepository
      * @param RequestInterface $request
      * @param ConfigProvider $configProvider
+     * @param Random $mathRandom
      */
     public function __construct(
         private readonly Repository $assetRepository,
         private readonly RequestInterface $request,
-        private readonly ConfigProvider $configProvider
+        private readonly ConfigProvider $configProvider,
+        private readonly Random $mathRandom
     ) {
     }
 
@@ -129,7 +132,7 @@ class ViteResolver implements ArgumentInterface
         $vueUrl = $this->getViewLibFileUrl('vue');
 
         // Generate a unique ID for the Vue component's container.
-        $uniqueId = 'vue-component-' . uniqid();
+        $uniqueId = $this->mathRandom->getUniqueHash('vue-component-');
 
         // Convert properties to JSON format for JavaScript.
         $propsJson = json_encode($props, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
@@ -178,7 +181,7 @@ class ViteResolver implements ArgumentInterface
         }
         $url = $this->getViewFileUrl("MageObsidian_ModernFrontend::assets/@heroicons/{$size}/{$iconSet}/{$iconName}");
         return <<<HTML
-            <svg width="$size" height="$size" mlns="http://www.w3.org/2000/svg">
+            <svg width="$size" height="$size" xmlns="http://www.w3.org/2000/svg">
                 <use href="$url#icon"></use>
             </svg>
         HTML;
