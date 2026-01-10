@@ -1,0 +1,77 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "MageObsidian frontend contract",
+    "description": "Shape of the generated mage_obsidian_frontend_modules.json consumed by the JS build engine. Kept in sync with ConfigManager and ConfigInterface; bump SCHEMA_VERSION on any breaking change.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+        "schema_version",
+        "mode",
+        "modules",
+        "themes",
+        "allModules",
+        "VUE_COMPONENTS_PATH",
+        "JS_PATH",
+        "FOLDERS_TO_WATCH",
+        "ALLOWED_EXTENSIONS",
+        "MODULE_CSS_EXTEND_FILE",
+        "MODULE_CONFIG_FILE",
+        "THEME_CONFIG_FILE",
+        "THEME_CSS_SOURCE_FILE",
+        "THEME_FILES_PATH",
+        "LIB_PATH"
+    ],
+    "properties": {
+        "schema_version": {
+            "type": "string",
+            "enum": ["1.0.0"]
+        },
+        "mode": {
+            "type": "string",
+            "enum": ["developer", "default", "production"]
+        },
+        "modules": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["src"],
+                "properties": {
+                    "src": { "type": "string" }
+                }
+            }
+        },
+        "themes": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["src", "parent"],
+                "properties": {
+                    "src": { "type": "string" },
+                    "parent": { "type": ["string", "null"] }
+                }
+            }
+        },
+        "allModules": {
+            "type": "array",
+            "items": { "type": "string" }
+        },
+        "VUE_COMPONENTS_PATH": { "type": "string" },
+        "JS_PATH": { "type": "string" },
+        "FOLDERS_TO_WATCH": {
+            "type": "array",
+            "items": { "type": "string" }
+        },
+        "ALLOWED_EXTENSIONS": {
+            "type": "array",
+            "items": { "type": "string" }
+        },
+        "MODULE_CSS_EXTEND_FILE": { "type": "string" },
+        "MODULE_CONFIG_FILE": { "type": "string" },
+        "THEME_CONFIG_FILE": { "type": "string" },
+        "THEME_CSS_SOURCE_FILE": { "type": "string" },
+        "THEME_FILES_PATH": { "type": "string" },
+        "LIB_PATH": { "type": "string" }
+    }
+}

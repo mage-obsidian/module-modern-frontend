@@ -10,6 +10,14 @@ namespace MageObsidian\ModernFrontend\Api\Data;
 
 interface ConfigInterface
 {
+    /**
+     * Version of the generated frontend contract (mage_obsidian_frontend_modules.json/.php).
+     *
+     * Bump on any breaking change to the contract shape. The JS engine pins the
+     * version it understands and refuses a mismatching contract, so PHP and JS
+     * stay in lockstep. See js-package-utils contractValidator.js.
+     */
+    public const string SCHEMA_VERSION = '1.0.0';
     public const string VUE_COMPONENTS_PATH = 'components';
     public const string JS_PATH = 'js';
     public const array FOLDERS_TO_WATCH = [

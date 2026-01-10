@@ -8,6 +8,7 @@
 
 namespace MageObsidian\ModernFrontend\Service;
 
+use JsonSchema\Validator as JsonSchemaValidator;
 use MageObsidian\ModernFrontend\Api\Data\ConfigInterface;
 use Magento\Framework\App\DeploymentConfig\Writer\FormatterInterface;
 use Magento\Framework\App\State;
@@ -15,6 +16,8 @@ use Magento\Framework\Exception\FileSystemException;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Filesystem\DriverInterface;
 use Magento\Framework\App\Filesystem\DirectoryList;
+use Magento\Framework\Module\Dir\Reader as ModuleDirReader;
+use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Magento\Framework\Module\ModuleList as MagentoModuleList;
 
@@ -23,6 +26,8 @@ class ConfigManager
     public const string CONFIG_FILE = 'app/etc/mage_obsidian_frontend_modules';
     public const string JSON_EXTENSION = '.json';
     public const string PHP_EXTENSION = '.php';
+    private const string MODULE_NAME = 'MageObsidian_ModernFrontend';
+    private const string SCHEMA_FILE = 'mage_obsidian_frontend_contract.schema.json';
     /**
      * @var array
      */
@@ -42,6 +47,8 @@ class ConfigManager
      * @param DriverInterface $filesystemDriver
      * @param FormatterInterface $formatter
      * @param State $state
+     * @param ModuleDirReader $moduleDirReader
+     * @param LoggerInterface $logger
      *
      * @throws LocalizedException
      */
@@ -52,7 +59,9 @@ class ConfigManager
         private readonly DirectoryList $directoryList,
         private readonly DriverInterface $filesystemDriver,
         private readonly FormatterInterface $formatter,
-        private readonly State $state
+        private readonly State $state,
+        private readonly ModuleDirReader $moduleDirReader,
+        private readonly LoggerInterface $logger
     ) {
         $this->CONFIG_PATHS = [
             'php' => $this->directoryList->getPath(DirectoryList::ROOT) . '/' . self::CONFIG_FILE . self::PHP_EXTENSION,
@@ -79,16 +88,19 @@ class ConfigManager
             'parent' => $theme['parent_code']
         ], $enabledThemes);
 
-        $configData = [
+        // schema_version + mode are emitted into BOTH files so either consumer
+        // (PHP get(), JS configResolver) can detect drift. mode drives isDev()
+        // on the JS side; without it the build defaults to dev.
+        $baseConfig = [
+            'schema_version' => ConfigInterface::SCHEMA_VERSION,
+            'mode' => $this->state->getMode(),
             'modules' => $configModules,
             'themes' => $configThemes
         ];
-        $this->writeFile($this->getConfigFilePath()['php'], $this->formatter->format($configData));
-        $configData = [
-            ...$configData,
-            // Magento app mode (developer|default|production); the JS build reads
-            // this to drive isDev(). Without it configResolver.js defaults to dev.
-            'mode' => $this->state->getMode(),
+        $this->writeFile($this->getConfigFilePath()['php'], $this->formatter->format($baseConfig));
+
+        $jsonConfig = [
+            ...$baseConfig,
             'allModules' => $this->magentoModuleList->getNames(),
             'VUE_COMPONENTS_PATH' => ConfigInterface::VUE_COMPONENTS_PATH,
             'JS_PATH' => ConfigInterface::JS_PATH,
@@ -98,11 +110,53 @@ class ConfigManager
             'MODULE_CONFIG_FILE' => ConfigInterface::MODULE_CONFIG_FILE,
             'THEME_CONFIG_FILE' => ConfigInterface::THEME_CONFIG_FILE,
             'THEME_CSS_SOURCE_FILE' => ConfigInterface::THEME_CSS_SOURCE_FILE,
+            'THEME_FILES_PATH' => ConfigInterface::THEME_FILES_PATH,
             'LIB_PATH' => ConfigInterface::LIB_PATH
         ];
-        $this->writeFile($this->getConfigFilePath()['json'], json_encode($configData, JSON_PRETTY_PRINT));
-        $this->configData = $configData;
+
+        $this->assertValidContract($jsonConfig);
+        $this->writeFile($this->getConfigFilePath()['json'], json_encode($jsonConfig, JSON_PRETTY_PRINT));
+        $this->configData = $jsonConfig;
         return $this->configData;
+    }
+
+    /**
+     * Validate the generated contract against the JSON schema before writing it.
+     *
+     * Catches drift between this generator and the shape the JS engine expects
+     * (the schema is the single source of truth for that shape).
+     *
+     * @param array $configData
+     *
+     * @return void
+     * @throws LocalizedException
+     * @throws FileSystemException
+     */
+    private function assertValidContract(array $configData): void
+    {
+        $schemaPath = $this->moduleDirReader->getModuleDir('etc', self::MODULE_NAME)
+            . '/' . self::SCHEMA_FILE;
+        $schema = json_decode($this->filesystemDriver->fileGetContents($schemaPath));
+
+        // Round-trip through JSON so associative arrays become the stdClass
+        // objects the validator expects for "type: object".
+        $payload = json_decode(json_encode($configData));
+
+        $validator = new JsonSchemaValidator();
+        $validator->validate($payload, $schema);
+
+        if ($validator->isValid()) {
+            return;
+        }
+
+        $details = array_map(
+            static fn(array $error): string => trim(sprintf('%s: %s', $error['property'], $error['message'])),
+            $validator->getErrors()
+        );
+        $message = 'Generated MageObsidian frontend contract failed schema validation: '
+            . implode('; ', $details);
+        $this->logger->error($message);
+        throw new LocalizedException(__($message));
     }
 
     /**
@@ -174,18 +228,32 @@ class ConfigManager
     }
 
     /**
+     * Write the contract file atomically (temp file + rename).
+     *
+     * A consumer reading the file mid-write would otherwise see a truncated
+     * contract; rename on the same filesystem is atomic, so readers see either
+     * the old file or the complete new one.
      *
      * @param string $filePath
      * @param string $data
      *
-     * @throws RuntimeException
+     * @return void
+     * @throws FileSystemException
      */
     private function writeFile(string $filePath, string $data): void
     {
+        $tmpPath = $filePath . '.tmp';
         try {
-            $this->filesystemDriver->filePutContents($filePath, $data);
-        } catch (\Exception $e) {
-            throw new RuntimeException("Failed to write file: $filePath. Error: " . $e->getMessage());
+            $this->filesystemDriver->filePutContents($tmpPath, $data);
+            $this->filesystemDriver->rename($tmpPath, $filePath);
+        } catch (FileSystemException $e) {
+            $this->logger->error(
+                sprintf('Failed to write MageObsidian frontend contract %s: %s', $filePath, $e->getMessage())
+            );
+            if ($this->filesystemDriver->isExists($tmpPath)) {
+                $this->filesystemDriver->deleteFile($tmpPath);
+            }
+            throw $e;
         }
     }
 }
