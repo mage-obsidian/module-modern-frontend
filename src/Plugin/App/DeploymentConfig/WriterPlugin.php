@@ -31,13 +31,15 @@ class WriterPlugin
      * @param Writer $subject
      * @param bool $result
      *
+     * @return bool
      * @throws FileSystemException
      * @throws LocalizedException
+     * @SuppressWarnings(PHPMD.UnusedFormalParameter)
      */
     public function afterSaveConfig(
         Writer $subject,
-        $result
-    ) {
+        bool $result
+    ): bool {
         $this->configManager->generate();
         return $result;
     }

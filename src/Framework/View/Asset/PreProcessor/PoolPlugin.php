@@ -43,6 +43,7 @@ class PoolPlugin
      * @return void
      * @throws LocalizedException
      * @throws FileSystemException
+     * @SuppressWarnings(PHPMD.UnusedFormalParameter)
      */
     public function aroundProcess(
         Pool $subject,

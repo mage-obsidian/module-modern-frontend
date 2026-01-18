@@ -13,8 +13,7 @@
     </type>
     <type name="MageObsidian\ModernFrontend\Service\ConfigManager">
         <arguments>
-            <argument name="formatter" xsi:type="object">Magento\Framework\App\DeploymentConfig\Writer\PhpFormatter
-            </argument>
+            <argument name="formatter" xsi:type="object">Magento\Framework\App\DeploymentConfig\Writer\PhpFormatter</argument>
             <argument name="filesystemDriver" xsi:type="object">Magento\Framework\Filesystem\Driver\File</argument>
         </arguments>
     </type>
@@ -74,10 +73,23 @@
         />
     </type>
 
+    <type name="MageObsidian\ModernFrontend\Plugin\Deploy\Service\DeployRequireJsConfigPlugin">
+        <arguments>
+            <argument name="configManager" xsi:type="object">MageObsidian\ModernFrontend\Service\ConfigManager\Proxy</argument>
+        </arguments>
+    </type>
+
     <type name="Magento\Deploy\Service\Bundle">
         <plugin
             name="exclude_modern_themes"
             type="MageObsidian\ModernFrontend\Plugin\Deploy\Service\DeployRequireJsConfigPlugin"
+        />
+    </type>
+
+    <type name="Magento\Deploy\Service\DeployStaticContent">
+        <plugin
+            name="deploy_vite_content"
+            type="MageObsidian\ModernFrontend\Plugin\Deploy\Service\DeployViteContentPlugin"
         />
     </type>
 </config>
