@@ -123,6 +123,16 @@ class Template extends MagentoTemplate
     }
 
     /**
+     * Runtime i18n config (locale + dictionary URL) for the JS translation layer.
+     *
+     * @return array{locale: string, dictionaryUrl: string}
+     */
+    public function getI18nRuntimeConfig(): array
+    {
+        return $this->viteResolver->getI18nRuntimeConfig();
+    }
+
+    /**
      * Get the full URL for a Heroicons SVG icon.
      *
      * @param string $iconName Icon name.

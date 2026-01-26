@@ -11,6 +11,7 @@ namespace MageObsidian\ModernFrontend\ViewModel;
 
 use InvalidArgumentException;
 use Magento\Framework\App\RequestInterface;
+use Magento\Framework\Locale\ResolverInterface as LocaleResolver;
 use Magento\Framework\Math\Random;
 use Magento\Framework\View\Asset\Repository;
 use Magento\Framework\View\Element\Block\ArgumentInterface;
@@ -21,18 +22,31 @@ use RuntimeException;
 class ViteResolver implements ArgumentInterface
 {
     /**
+     * Framework i18n runtime, shipped as a module web asset (Vendor::js/i18n).
+     */
+    private const I18N_RUNTIME_NAME = 'MageObsidian_ModernFrontend::js/i18n';
+
+    /**
+     * Magento's native per-locale JS dictionary, materialized at
+     * pub/static/<area>/<theme>/<locale>/js-translation.json during deploy.
+     */
+    private const JS_TRANSLATION_FILE = 'js-translation.json';
+
+    /**
      * ViteResolver constructor.
      *
      * @param Repository $assetRepository
      * @param RequestInterface $request
      * @param ConfigProvider $configProvider
      * @param Random $mathRandom
+     * @param LocaleResolver $localeResolver
      */
     public function __construct(
         private readonly Repository $assetRepository,
         private readonly RequestInterface $request,
         private readonly ConfigProvider $configProvider,
-        private readonly Random $mathRandom
+        private readonly Random $mathRandom,
+        private readonly LocaleResolver $localeResolver
     ) {
     }
 
@@ -130,6 +144,7 @@ class ViteResolver implements ArgumentInterface
     {
         $componentPath = $this->resolvePathByName($componentName, ConfigInterface::VUE_COMPONENTS_PATH);
         $vueUrl = $this->getViewLibFileUrl('vue');
+        $i18nUrl = $this->resolvePathByName(self::I18N_RUNTIME_NAME);
 
         // Generate a unique ID for the Vue component's container.
         $uniqueId = $this->mathRandom->getUniqueHash('vue-component-');
@@ -137,19 +152,40 @@ class ViteResolver implements ArgumentInterface
         // Convert properties to JSON format for JavaScript.
         $propsJson = json_encode($props, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
 
-        // Return the HTML and JavaScript needed to mount the Vue component.
+        // Return the HTML and JavaScript needed to mount the Vue component. The
+        // i18n plugin is registered automatically so `$t(...)` is available in
+        // every PHP-rendered component without extra wiring.
         return <<<HTML
             <div id="$uniqueId"></div>
             <script type="module">
                 import { createApp } from '$vueUrl';
                 import Component from '$componentPath';
+                import obsidianI18n from '$i18nUrl';
                 try {
-                    createApp(Component, $propsJson).mount('#$uniqueId');
+                    createApp(Component, $propsJson).use(obsidianI18n).mount('#$uniqueId');
                 } catch (error) {
                     console.error('Failed to mount Vue component:', error);
                 }
             </script>
         HTML;
+    }
+
+    /**
+     * Runtime i18n config consumed by the JS translation layer.
+     *
+     * Exposes the active locale and the URL of Magento's native per-locale
+     * `js-translation.json` so the Vue layer can fetch the same dictionary the
+     * rest of the storefront uses. Published to the page as
+     * `window.__MAGE_OBSIDIAN_I18N__`.
+     *
+     * @return array{locale: string, dictionaryUrl: string}
+     */
+    public function getI18nRuntimeConfig(): array
+    {
+        return [
+            'locale' => $this->localeResolver->getLocale(),
+            'dictionaryUrl' => $this->getViewFileUrl(self::JS_TRANSLATION_FILE),
+        ];
     }
 
     /**

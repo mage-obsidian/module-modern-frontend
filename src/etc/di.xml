@@ -92,4 +92,19 @@
             type="MageObsidian\ModernFrontend\Plugin\Deploy\Service\DeployViteContentPlugin"
         />
     </type>
+
+    <!--
+        The Vue compiler serializes $t('phrase') as a template literal,
+        $t(`phrase`), which Magento's native $t pattern (single/double quotes
+        only) does not match. Register a backtick-aware pattern so phrases from
+        compiled .vue output reach js-translation.json. Phrase must be capture
+        group 2 (group 1 is the opening delimiter) — see DataProvider::getPhrases.
+    -->
+    <type name="Magento\Translation\Model\Js\Config">
+        <arguments>
+            <argument name="patterns" xsi:type="array">
+                <item name="mage_obsidian_t_template_literal" xsi:type="string"><![CDATA[~\$t\(\s*(`)([^`]+?)`~]]></item>
+            </argument>
+        </arguments>
+    </type>
 </config>

@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * This file is part of the Obsidian - ModernFrontend project.
+ *
+ * @license MIT License - See the LICENSE file in the root directory for details.
+ * © 2024 Jeanmarcos Juarez
+ */
+-->
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <body>
+        <referenceContainer name="before.body.end">
+            <block class="MageObsidian\ModernFrontend\Block\I18nRuntime"
+                   name="mage_obsidian.i18n_runtime"/>
+        </referenceContainer>
+    </body>
+</page>
