@@ -100,6 +100,9 @@
         compiled .vue output reach js-translation.json. Phrase must be capture
         group 2 (group 1 is the opening delimiter) — see DataProvider::getPhrases.
     -->
+    <preference for="MageObsidian\ModernFrontend\Service\Dev\HttpProberInterface"
+                type="MageObsidian\ModernFrontend\Service\Dev\CurlHttpProber"/>
+
     <type name="Magento\Translation\Model\Js\Config">
         <arguments>
             <argument name="patterns" xsi:type="array">

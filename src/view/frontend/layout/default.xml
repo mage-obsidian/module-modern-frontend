@@ -13,6 +13,8 @@
         <referenceContainer name="before.body.end">
             <block class="MageObsidian\ModernFrontend\Block\I18nRuntime"
                    name="mage_obsidian.i18n_runtime"/>
+            <block class="MageObsidian\ModernFrontend\Block\DevServerGuard"
+                   name="mage_obsidian.dev_server_guard"/>
         </referenceContainer>
     </body>
 </page>
