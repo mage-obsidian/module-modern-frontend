@@ -2,10 +2,18 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
     <default>
-        <mage-obsidian>
+        <mage_obsidian>
             <hmr>
                 <enabled>1</enabled>
             </hmr>
-        </mage-obsidian>
+            <dev_server>
+                <host>localhost</host>
+                <port>5173</port>
+                <secure>0</secure>
+                <hmr_path>/__vite_ping</hmr_path>
+                <public_host>localhost</public_host>
+                <allowed_hosts>localhost</allowed_hosts>
+            </dev_server>
+        </mage_obsidian>
     </default>
 </config>

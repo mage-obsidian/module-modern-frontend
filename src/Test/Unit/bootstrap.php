@@ -26,3 +26,7 @@ foreach ($autoloadCandidates as $autoload) {
 if (!class_exists(\MageObsidian\ModernFrontend\Plugin\Deploy\Service\DeployViteContentPlugin::class, false)) {
     require __DIR__ . '/../../Plugin/Deploy/Service/DeployViteContentPlugin.php';
 }
+
+if (!class_exists(\MageObsidian\ModernFrontend\Service\Dev\ViteEnvFile::class, false)) {
+    require __DIR__ . '/../../Service/Dev/ViteEnvFile.php';
+}

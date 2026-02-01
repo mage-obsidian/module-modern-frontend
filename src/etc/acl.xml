@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * This file is part of the Obsidian - ModernFrontend project.
+ *
+ * @license MIT License - See the LICENSE file in the root directory for details.
+ * © 2024 Jeanmarcos Juarez
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Acl/etc/acl.xsd">
+    <acl>
+        <resources>
+            <resource id="Magento_Backend::admin">
+                <resource id="Magento_Backend::stores">
+                    <resource id="Magento_Backend::stores_settings">
+                        <resource id="Magento_Config::config">
+                            <resource id="MageObsidian_ModernFrontend::config"
+                                      title="MageObsidian Frontend"
+                                      translate="title"
+                                      sortOrder="100"/>
+                        </resource>
+                    </resource>
+                </resource>
+            </resource>
+        </resources>
+    </acl>
+</config>

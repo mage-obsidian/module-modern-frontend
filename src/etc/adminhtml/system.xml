@@ -1,0 +1,83 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * This file is part of the Obsidian - ModernFrontend project.
+ *
+ * @license MIT License - See the LICENSE file in the root directory for details.
+ * © 2024 Jeanmarcos Juarez
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <tab id="mage_obsidian" translate="label" sortOrder="400">
+            <label>MageObsidian</label>
+        </tab>
+        <!--
+            Section id is decoupled from storage: every field pins its
+            core_config_data path via <config_path> (mage_obsidian/...), the same
+            keys ConfigProvider reads, so the admin tree layout can change freely.
+        -->
+        <section id="mage_obsidian_frontend" translate="label" type="text" sortOrder="10"
+                 showInDefault="1" showInWebsite="1" showInStore="1">
+            <label>Frontend</label>
+            <tab>mage_obsidian</tab>
+            <resource>MageObsidian_ModernFrontend::config</resource>
+            <group id="hmr" translate="label" type="text" sortOrder="10"
+                   showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Hot Module Replacement</label>
+                <field id="enabled" translate="label comment" type="select" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable HMR</label>
+                    <comment>Serve assets from the Vite dev server. Always forced off in production mode.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <config_path>mage_obsidian/hmr/enabled</config_path>
+                </field>
+            </group>
+            <group id="dev_server" translate="label comment" type="text" sortOrder="20"
+                   showInDefault="1" showInWebsite="0" showInStore="0">
+                <label>Vite Dev Server</label>
+                <comment><![CDATA[Single source of truth for the Vite harness. Run
+                    <code>bin/magento mage-obsidian:frontend:dev --sync-env</code> to write these into vite/.env.]]></comment>
+                <field id="host" translate="label comment" type="text" sortOrder="10"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Server Host</label>
+                    <comment>Host the dev server binds to / is reachable at (e.g. the PHP container name). Maps to VITE_SERVER_HOST.</comment>
+                    <config_path>mage_obsidian/dev_server/host</config_path>
+                </field>
+                <field id="port" translate="label comment" type="text" sortOrder="20"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Server Port</label>
+                    <comment>Maps to VITE_SERVER_PORT.</comment>
+                    <validate>validate-digits</validate>
+                    <config_path>mage_obsidian/dev_server/port</config_path>
+                </field>
+                <field id="secure" translate="label comment" type="select" sortOrder="30"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Secure HMR (wss)</label>
+                    <comment>Use wss instead of ws for the HMR socket. Maps to VITE_SERVER_SECURE.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <config_path>mage_obsidian/dev_server/secure</config_path>
+                </field>
+                <field id="hmr_path" translate="label comment" type="text" sortOrder="40"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>HMR Path</label>
+                    <comment>WebSocket path for HMR. Maps to VITE_HMR_PATH.</comment>
+                    <config_path>mage_obsidian/dev_server/hmr_path</config_path>
+                </field>
+                <field id="public_host" translate="label comment" type="text" sortOrder="50"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Public Host</label>
+                    <comment>Public hostname the browser connects to for HMR (the storefront domain). Maps to MAGENTO_HOST.</comment>
+                    <config_path>mage_obsidian/dev_server/public_host</config_path>
+                </field>
+                <field id="allowed_hosts" translate="label comment" type="text" sortOrder="60"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Allowed Hosts</label>
+                    <comment>Comma-separated hosts the dev server accepts. Maps to VITE_SERVER_ALLOWED_HOSTS.</comment>
+                    <config_path>mage_obsidian/dev_server/allowed_hosts</config_path>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>

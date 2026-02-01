@@ -9,6 +9,7 @@
 namespace MageObsidian\ModernFrontend\Model\Config;
 
 use MageObsidian\ModernFrontend\Api\Data\ConfigInterface;
+use MageObsidian\ModernFrontend\Service\Dev\ViteEnvFile;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\State;
 use Magento\Framework\View\Element\Block\ArgumentInterface;
@@ -16,8 +17,15 @@ use Magento\Store\Model\ScopeInterface;
 
 class ConfigProvider implements ArgumentInterface
 {
-    public const string ROOT_PATH = 'mage-obsidian/';
+    public const string ROOT_PATH = 'mage_obsidian/';
     public const string HMR_ENABLED = self::ROOT_PATH . 'hmr/enabled';
+    public const string DEV_SERVER_PATH = self::ROOT_PATH . 'dev_server/';
+    public const string DEV_SERVER_HOST = self::DEV_SERVER_PATH . 'host';
+    public const string DEV_SERVER_PORT = self::DEV_SERVER_PATH . 'port';
+    public const string DEV_SERVER_SECURE = self::DEV_SERVER_PATH . 'secure';
+    public const string DEV_SERVER_HMR_PATH = self::DEV_SERVER_PATH . 'hmr_path';
+    public const string DEV_SERVER_PUBLIC_HOST = self::DEV_SERVER_PATH . 'public_host';
+    public const string DEV_SERVER_ALLOWED_HOSTS = self::DEV_SERVER_PATH . 'allowed_hosts';
 
     /**
      * @param ScopeConfigInterface $scopeConfig
@@ -39,7 +47,7 @@ class ConfigProvider implements ArgumentInterface
         if ($this->state->getMode() === State::MODE_PRODUCTION) {
             return false;
         }
-        return (bool)$this->scopeConfig->getValue(self::ROOT_PATH . 'hmr/enabled', ScopeInterface::SCOPE_STORE);
+        return (bool)$this->scopeConfig->getValue(self::HMR_ENABLED, ScopeInterface::SCOPE_STORE);
     }
 
     /**
@@ -53,5 +61,58 @@ class ConfigProvider implements ArgumentInterface
             return ConfigInterface::VITE_GENERATED_PATH;
         }
         return ConfigInterface::GENERATED_PATH;
+    }
+
+    /**
+     * Vite dev server config read from Magento (the single source of truth for
+     * the JS harness). Resolved at default scope: the dev server is a developer
+     * environment concern, not a per-store setting.
+     */
+    public function getDevServerHost(): string
+    {
+        return (string)$this->scopeConfig->getValue(self::DEV_SERVER_HOST);
+    }
+
+    public function getDevServerPort(): string
+    {
+        return (string)$this->scopeConfig->getValue(self::DEV_SERVER_PORT);
+    }
+
+    public function isDevServerSecure(): bool
+    {
+        return (bool)$this->scopeConfig->getValue(self::DEV_SERVER_SECURE);
+    }
+
+    public function getDevServerHmrPath(): string
+    {
+        return (string)$this->scopeConfig->getValue(self::DEV_SERVER_HMR_PATH);
+    }
+
+    public function getDevServerPublicHost(): string
+    {
+        return (string)$this->scopeConfig->getValue(self::DEV_SERVER_PUBLIC_HOST);
+    }
+
+    public function getDevServerAllowedHosts(): string
+    {
+        return (string)$this->scopeConfig->getValue(self::DEV_SERVER_ALLOWED_HOSTS);
+    }
+
+    /**
+     * Resolve the full Vite env-var map from Magento config, ready to render
+     * into the harness `.env`.
+     *
+     * @return array<string, string>
+     */
+    public function getViteEnvVars(): array
+    {
+        return ViteEnvFile::buildVars(
+            $this->getDevServerHost(),
+            $this->getDevServerPort(),
+            $this->isDevServerSecure(),
+            $this->getDevServerHmrPath(),
+            $this->getDevServerPublicHost(),
+            $this->getDevServerAllowedHosts()
+        );
     }
 }
