@@ -103,6 +103,12 @@
     <preference for="MageObsidian\ModernFrontend\Service\Dev\HttpProberInterface"
                 type="MageObsidian\ModernFrontend\Service\Dev\CurlHttpProber"/>
 
+    <type name="MageObsidian\ModernFrontend\Service\Dev\DevServerProcess">
+        <arguments>
+            <argument name="fileDriver" xsi:type="object">Magento\Framework\Filesystem\Driver\File</argument>
+        </arguments>
+    </type>
+
     <type name="Magento\Translation\Model\Js\Config">
         <arguments>
             <argument name="patterns" xsi:type="array">
