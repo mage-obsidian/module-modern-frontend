@@ -34,3 +34,7 @@ if (!class_exists(\MageObsidian\ModernFrontend\Service\Dev\ViteEnvFile::class, f
 if (!class_exists(\MageObsidian\ModernFrontend\Service\Dev\DevServerProcess::class, false)) {
     require __DIR__ . '/../../Service/Dev/DevServerProcess.php';
 }
+
+if (!class_exists(\MageObsidian\ModernFrontend\Service\Dev\ModeAdvisor::class, false)) {
+    require __DIR__ . '/../../Service/Dev/ModeAdvisor.php';
+}

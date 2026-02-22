@@ -109,6 +109,18 @@
         </arguments>
     </type>
 
+    <type name="Magento\Deploy\Model\Mode">
+        <plugin
+            name="mage-obsidian_mode_advisor"
+            type="MageObsidian\ModernFrontend\Plugin\Deploy\Model\ModePlugin"
+        />
+    </type>
+    <type name="MageObsidian\ModernFrontend\Plugin\Deploy\Model\ModePlugin">
+        <arguments>
+            <argument name="output" xsi:type="object">Symfony\Component\Console\Output\ConsoleOutput</argument>
+        </arguments>
+    </type>
+
     <type name="Magento\Translation\Model\Js\Config">
         <arguments>
             <argument name="patterns" xsi:type="array">
