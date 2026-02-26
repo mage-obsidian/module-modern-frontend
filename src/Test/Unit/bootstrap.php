@@ -38,3 +38,7 @@ if (!class_exists(\MageObsidian\ModernFrontend\Service\Dev\DevServerProcess::cla
 if (!class_exists(\MageObsidian\ModernFrontend\Service\Dev\ModeAdvisor::class, false)) {
     require __DIR__ . '/../../Service/Dev/ModeAdvisor.php';
 }
+
+if (!class_exists(\MageObsidian\ModernFrontend\Service\Dev\NginxSnippet::class, false)) {
+    require __DIR__ . '/../../Service/Dev/NginxSnippet.php';
+}
