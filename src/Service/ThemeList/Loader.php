@@ -18,11 +18,13 @@ use Magento\Framework\Filesystem\DriverInterface;
 use Magento\Framework\Module\ModuleList;
 use Magento\Framework\Xml\Parser;
 use Magento\Framework\Config\Dom;
+use Magento\Framework\Config\Dom\ValidationException;
 use Magento\Framework\Config\ValidationStateInterface;
 use Magento\Framework\Xml\ParserFactory;
 use Magento\Theme\Model\ResourceModel\Theme\Collection;
 use Magento\Theme\Model\ResourceModel\Theme\CollectionFactory;
 use Magento\Theme\Model\Theme;
+use Psr\Log\LoggerInterface;
 
 class Loader extends \MageObsidian\ModernFrontend\Service\ModuleList\Loader
 {
@@ -37,6 +39,7 @@ class Loader extends \MageObsidian\ModernFrontend\Service\ModuleList\Loader
      * @param Parser $parser
      * @param ValidationStateInterface $validationState
      * @param ParserFactory $parserFactory
+     * @param LoggerInterface $logger
      * @param CollectionFactory $themeCollection
      * @param DirectoryList $directoryList
      */
@@ -47,10 +50,11 @@ class Loader extends \MageObsidian\ModernFrontend\Service\ModuleList\Loader
         Parser $parser,
         ValidationStateInterface $validationState,
         ParserFactory $parserFactory,
+        LoggerInterface $logger,
         protected readonly CollectionFactory $themeCollection,
         protected readonly DirectoryList $directoryList,
     ) {
-        parent::__construct($moduleRegistry, $moduleList, $filesystemDriver, $parser, $validationState, $parserFactory);
+        parent::__construct($moduleRegistry, $moduleList, $filesystemDriver, $parser, $validationState, $parserFactory, $logger);
     }
 
     /**
@@ -63,6 +67,8 @@ class Loader extends \MageObsidian\ModernFrontend\Service\ModuleList\Loader
 
         $schemaPath = $this->getSchemaPath();
         foreach ($this->getThemeConfigs() as list($themeCode, $parentThemeCode, $filePath, $contents)) {
+            // Mirror the module loader: a malformed/invalid theme descriptor is
+            // logged and skipped rather than aborting the whole contract.
             try {
                 new Dom($contents, $this->validationState, schemaFile: $schemaPath);
                 $data = $this->parser->loadXML($contents)
@@ -74,11 +80,14 @@ class Loader extends \MageObsidian\ModernFrontend\Service\ModuleList\Loader
                     'data' => $data,
                     'path' => $filePath,
                 ];
-            } catch (\Exception $e) {
-                throw new \Magento\Framework\Exception\LocalizedException(new \Magento\Framework\Phrase(
-                    'Invalid Document in %1: %2',
-                    [$filePath, $e->getMessage()]
-                ), $e);
+            } catch (ValidationException $e) {
+                $this->logger->warning(sprintf(
+                    'MageObsidian: skipping theme "%s" — invalid %s at %s: %s',
+                    $themeCode,
+                    self::XML_FILE_NAME,
+                    $filePath,
+                    $e->getMessage()
+                ));
             }
         }
 

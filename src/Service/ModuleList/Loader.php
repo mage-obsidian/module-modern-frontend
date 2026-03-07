@@ -19,8 +19,10 @@ use Magento\Framework\Module\ModuleList;
 use Magento\Framework\Xml\Parser;
 use Magento\Framework\Xml\ParserFactory;
 use Magento\Framework\Config\Dom;
+use Magento\Framework\Config\Dom\ValidationException;
 use Magento\Framework\Config\ValidationStateInterface;
 use Magento\Framework\Phrase;
+use Psr\Log\LoggerInterface;
 
 class Loader
 {
@@ -37,6 +39,7 @@ class Loader
      * @param Parser $parser
      * @param ValidationStateInterface $validationState
      * @param ParserFactory $parserFactory
+     * @param LoggerInterface $logger
      */
     public function __construct(
         protected ComponentRegistrarInterface $moduleRegistry,
@@ -44,7 +47,8 @@ class Loader
         protected DriverInterface $filesystemDriver,
         protected Parser $parser,
         protected ValidationStateInterface $validationState,
-        protected ParserFactory $parserFactory
+        protected ParserFactory $parserFactory,
+        protected LoggerInterface $logger
     ) {
     }
 
@@ -58,6 +62,10 @@ class Loader
 
         $schemaPath = $this->getSchemaPath();
         foreach ($this->getModuleConfigs() as list($moduleName, $filePath, $contents)) {
+            // A single malformed or invalid descriptor must not take down the
+            // whole contract: log it and skip that module so the rest still
+            // load. A broken XSD (ValidationSchemaException) is our bug and is
+            // left to propagate loudly.
             try {
                 new Dom($contents, $this->validationState, schemaFile: $schemaPath);
                 $data = $this->parser->loadXML($contents)
@@ -68,11 +76,14 @@ class Loader
                     'data' => $data,
                     'path' => $filePath,
                 ];
-            } catch (\Exception $e) {
-                throw new \Magento\Framework\Exception\LocalizedException(new \Magento\Framework\Phrase(
-                    'Invalid Document in %1: %2',
-                    [$filePath, $e->getMessage()]
-                ), $e);
+            } catch (ValidationException $e) {
+                $this->logger->warning(sprintf(
+                    'MageObsidian: skipping module "%s" — invalid %s at %s: %s',
+                    $moduleName,
+                    self::XML_FILE_NAME,
+                    $filePath,
+                    $e->getMessage()
+                ));
             }
         }
 
