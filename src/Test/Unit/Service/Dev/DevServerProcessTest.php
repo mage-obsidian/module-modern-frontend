@@ -16,6 +16,14 @@ class DevServerProcessTest extends TestCase
         );
     }
 
+    public function testBuildBuildArgsTargetsBuildScriptForTheme(): void
+    {
+        $this->assertSame(
+            ['pnpm', '--prefix', 'vite', 'build', '--theme=MageObsidian/theme-base'],
+            DevServerProcess::buildBuildArgs('pnpm', 'MageObsidian/theme-base')
+        );
+    }
+
     public function testBuildSpawnCommandDetachesAndEchoesPid(): void
     {
         $cmd = DevServerProcess::buildSpawnCommand('pnpm', 'MageObsidian/theme-base', '/var/log/dev.log');

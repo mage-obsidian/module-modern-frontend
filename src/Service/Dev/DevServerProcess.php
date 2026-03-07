@@ -13,6 +13,7 @@ use Magento\Framework\App\Filesystem\DirectoryList;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Filesystem\DriverInterface;
 use Symfony\Component\Process\ExecutableFinder;
+use Symfony\Component\Process\Process;
 
 /**
  * Manages the local lifecycle of the Vite dev server (a long-lived Node process)
@@ -117,6 +118,37 @@ class DevServerProcess
             'pid' => $running ? $pid : null,
             'theme' => $running ? ($state['theme'] ?? null) : null,
         ];
+    }
+
+    /**
+     * Run a one-shot build of the theme to disk (the --no-watch path): no HMR,
+     * no long-lived process. Runs in the foreground and streams output through
+     * the callback, returning the build's exit code.
+     *
+     * @param callable(string, string):void $onOutput receives (type, buffer)
+     * @throws LocalizedException
+     */
+    public function build(string $theme, callable $onOutput): int
+    {
+        $binary = $this->resolvePackageManager();
+        $root = $this->directoryList->getRoot();
+        $this->assertViteHarnessExists($root);
+
+        $process = new Process(self::buildBuildArgs($binary, $theme), $root);
+        $process->setTimeout(null);
+        $process->run($onOutput);
+
+        return $process->getExitCode() ?? 1;
+    }
+
+    /**
+     * Argument vector for a one-shot theme build (`pnpm --prefix vite build`).
+     *
+     * @return string[]
+     */
+    public static function buildBuildArgs(string $packageManager, string $theme): array
+    {
+        return [$packageManager, '--prefix', self::VITE_DIR, 'build', '--theme=' . $theme];
     }
 
     /**
