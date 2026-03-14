@@ -42,3 +42,11 @@ if (!class_exists(\MageObsidian\ModernFrontend\Service\Dev\ModeAdvisor::class, f
 if (!class_exists(\MageObsidian\ModernFrontend\Service\Dev\NginxSnippet::class, false)) {
     require __DIR__ . '/../../Service/Dev/NginxSnippet.php';
 }
+
+if (!class_exists(\MageObsidian\ModernFrontend\Service\Vue\PropsEncoder::class, false)) {
+    require __DIR__ . '/../../Service/Vue/PropsEncoder.php';
+}
+
+if (!class_exists(\MageObsidian\ModernFrontend\Service\Contract\ContractDiff::class, false)) {
+    require __DIR__ . '/../../Service/Contract/ContractDiff.php';
+}

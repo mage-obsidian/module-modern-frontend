@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace MageObsidian\ModernFrontend\Service\Dev;
 
+use MageObsidian\ModernFrontend\Service\Contract\ContractDiff;
+
 /**
  * Pure interpretation of dev-environment signals into actionable check results.
  *
@@ -50,6 +52,26 @@ class DevDiagnostics
         }
 
         return CheckResult::ok('Contract', sprintf('Valid (schema_version %s).', $schemaVersion));
+    }
+
+    /**
+     * Interpret a contract drift (from ConfigManager::detectDrift). A non-empty
+     * drift means the on-disk contract no longer matches the enabled
+     * modules/themes — e.g. a compatibility flag was edited without re-toggling.
+     *
+     * @param array<string, array{added: string[], removed: string[], changed: string[]}> $drift
+     */
+    public function evaluateDrift(array $drift): CheckResult
+    {
+        if (ContractDiff::isEmpty($drift)) {
+            return CheckResult::ok('Contract drift', 'Contract matches the enabled modules/themes.');
+        }
+
+        return CheckResult::warn(
+            'Contract drift',
+            sprintf('Contract is stale (%s).', ContractDiff::summarize($drift)),
+            'Regenerate it: bin/magento mage-obsidian:frontend:config --generate'
+        );
     }
 
     public function evaluateHmr(string $mode, bool $hmrEnabled): CheckResult

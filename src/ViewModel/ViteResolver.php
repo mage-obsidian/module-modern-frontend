@@ -17,6 +17,7 @@ use Magento\Framework\View\Asset\Repository;
 use Magento\Framework\View\Element\Block\ArgumentInterface;
 use MageObsidian\ModernFrontend\Api\Data\ConfigInterface;
 use MageObsidian\ModernFrontend\Model\Config\ConfigProvider;
+use MageObsidian\ModernFrontend\Service\Vue\PropsEncoder;
 use RuntimeException;
 
 class ViteResolver implements ArgumentInterface
@@ -149,8 +150,9 @@ class ViteResolver implements ArgumentInterface
         // Generate a unique ID for the Vue component's container.
         $uniqueId = $this->mathRandom->getUniqueHash('vue-component-');
 
-        // Convert properties to JSON format for JavaScript.
-        $propsJson = json_encode($props, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
+        // Convert properties to JSON. Fails loudly instead of emitting broken
+        // markup (e.g. `createApp(Component, false)`) when props are not encodable.
+        $propsJson = PropsEncoder::encode($componentName, $props);
 
         // Return the HTML and JavaScript needed to mount the Vue component. The
         // i18n plugin is registered automatically so `$t(...)` is available in

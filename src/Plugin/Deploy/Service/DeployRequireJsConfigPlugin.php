@@ -10,16 +10,16 @@ namespace MageObsidian\ModernFrontend\Plugin\Deploy\Service;
 
 use Magento\Framework\Exception\FileSystemException;
 use Magento\Framework\Exception\LocalizedException;
-use MageObsidian\ModernFrontend\Service\ConfigManager;
+use MageObsidian\ModernFrontend\Api\ConfigManagerInterface;
 use Magento\Framework\App\Area;
 
 class DeployRequireJsConfigPlugin
 {
     /**
-     * @param ConfigManager $configManager
+     * @param ConfigManagerInterface $configManager
      */
     public function __construct(
-        private readonly ConfigManager $configManager
+        private readonly ConfigManagerInterface $configManager
     ) {
     }
 

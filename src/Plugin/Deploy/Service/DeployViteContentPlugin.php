@@ -7,7 +7,9 @@ use Magento\Deploy\Console\DeployStaticOptions;
 use Magento\Deploy\Service\DeployStaticContent;
 use Magento\Framework\App\Filesystem\DirectoryList;
 use Magento\Framework\Exception\LocalizedException;
-use MageObsidian\ModernFrontend\Service\ConfigManager;
+use MageObsidian\ModernFrontend\Api\ConfigManagerInterface;
+use Symfony\Component\Console\Output\ConsoleOutputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
 
@@ -43,9 +45,10 @@ class DeployViteContentPlugin
     public const BUILD_TIMEOUT_ENV_VAR = 'MAGE_OBSIDIAN_VITE_BUILD_TIMEOUT';
 
     public function __construct(
-        private readonly ConfigManager $configManager,
+        private readonly ConfigManagerInterface $configManager,
         private readonly DirectoryList $directoryList,
-        private readonly ExecutableFinder $executableFinder
+        private readonly ExecutableFinder $executableFinder,
+        private readonly OutputInterface $output
     ) {
     }
 
@@ -67,7 +70,7 @@ class DeployViteContentPlugin
         }
 
         $themes = $options[DeployStaticOptions::THEME] ?? [];
-        fwrite(STDOUT, 'Starting Mage Obsidian Vite build generation...' . PHP_EOL);
+        $this->output->writeln('<info>Starting Mage Obsidian Vite build generation...</info>');
 
         if (in_array('all', $themes, true)) {
             $this->generateViteBuild();
@@ -80,7 +83,7 @@ class DeployViteContentPlugin
             }
         }
 
-        fwrite(STDOUT, 'Mage Obsidian Vite build generation finished.' . PHP_EOL);
+        $this->output->writeln('<info>Mage Obsidian Vite build generation finished.</info>');
         return [$options];
     }
 
@@ -116,12 +119,12 @@ class DeployViteContentPlugin
             $workingDirectory
         );
         $process->setTimeout(self::resolveTimeout(getenv(self::BUILD_TIMEOUT_ENV_VAR)));
-        $process->run(function ($type, $buffer) {
-            if ($type === Process::ERR) {
-                fwrite(STDERR, $buffer);
-            } else {
-                fwrite(STDOUT, $buffer);
+        $process->run(function ($type, $buffer): void {
+            if ($type === Process::ERR && $this->output instanceof ConsoleOutputInterface) {
+                $this->output->getErrorOutput()->write($buffer);
+                return;
             }
+            $this->output->write($buffer);
         });
 
         if (!$process->isSuccessful()) {

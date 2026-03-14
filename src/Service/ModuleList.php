@@ -10,9 +10,10 @@ namespace MageObsidian\ModernFrontend\Service;
 
 use Magento\Framework\Exception\FileSystemException;
 use Magento\Framework\Exception\LocalizedException;
+use MageObsidian\ModernFrontend\Api\ModuleListInterface;
 use MageObsidian\ModernFrontend\Service\ModuleList\Loader;
 
-class ModuleList
+class ModuleList implements ModuleListInterface
 {
     /**
      * @var array|null

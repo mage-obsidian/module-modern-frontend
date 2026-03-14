@@ -8,8 +8,8 @@
 
 namespace MageObsidian\ModernFrontend\Plugin\Deploy\Package;
 
+use MageObsidian\ModernFrontend\Api\ConfigManagerInterface;
 use MageObsidian\ModernFrontend\Api\Data\ConfigInterface;
-use MageObsidian\ModernFrontend\Service\ConfigManager;
 use Magento\Deploy\Package\Package;
 use Magento\Deploy\Package\PackageFile;
 use Magento\Framework\Exception\FileSystemException;
@@ -23,7 +23,7 @@ readonly class PackageFilePlugin
     private const EXCLUDED_NODE_MODULES = 'node_modules/.*';
 
     public function __construct(
-        private ConfigManager $configManager
+        private ConfigManagerInterface $configManager
     ) {
     }
 

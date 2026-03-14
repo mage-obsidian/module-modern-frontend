@@ -9,7 +9,11 @@
 namespace MageObsidian\ModernFrontend\Service;
 
 use JsonSchema\Validator as JsonSchemaValidator;
+use MageObsidian\ModernFrontend\Api\ConfigManagerInterface;
 use MageObsidian\ModernFrontend\Api\Data\ConfigInterface;
+use MageObsidian\ModernFrontend\Api\ModuleListInterface;
+use MageObsidian\ModernFrontend\Api\ThemeListInterface;
+use MageObsidian\ModernFrontend\Service\Contract\ContractDiff;
 use Magento\Framework\App\DeploymentConfig\Writer\FormatterInterface;
 use Magento\Framework\App\State;
 use Magento\Framework\Exception\FileSystemException;
@@ -21,7 +25,7 @@ use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Magento\Framework\Module\ModuleList as MagentoModuleList;
 
-class ConfigManager
+class ConfigManager implements ConfigManagerInterface
 {
     public const string CONFIG_FILE = 'app/etc/mage_obsidian_frontend_modules';
     public const string JSON_EXTENSION = '.json';
@@ -40,8 +44,8 @@ class ConfigManager
     /**
      * ConfigManager constructor.
      *
-     * @param ModuleList $moduleList
-     * @param ThemeList $themeList
+     * @param ModuleListInterface $moduleList
+     * @param ThemeListInterface $themeList
      * @param MagentoModuleList $magentoModuleList
      * @param DirectoryList $directoryList
      * @param DriverInterface $filesystemDriver
@@ -53,8 +57,8 @@ class ConfigManager
      * @throws LocalizedException
      */
     public function __construct(
-        private readonly ModuleList $moduleList,
-        private readonly ThemeList $themeList,
+        private readonly ModuleListInterface $moduleList,
+        private readonly ThemeListInterface $themeList,
         private readonly MagentoModuleList $magentoModuleList,
         private readonly DirectoryList $directoryList,
         private readonly DriverInterface $filesystemDriver,
@@ -114,8 +118,21 @@ class ConfigManager
             'LIB_PATH' => ConfigInterface::LIB_PATH
         ];
 
-        $this->assertValidContract($jsonConfig);
-        $this->writeFile($this->getConfigFilePath()['json'], json_encode($jsonConfig, JSON_PRETTY_PRINT));
+        // An empty section is array_map([]) === [], which json_encode serializes
+        // as a JSON array, not an object — failing the schema and the JS object
+        // access. Coerce to objects for the on-disk JSON only; the in-memory and
+        // .php copies stay arrays so PHP offset access (isModuleEnabled, etc.)
+        // keeps working. This is a real, reachable case (e.g. no compatible theme).
+        $jsonForFile = $jsonConfig;
+        if ($jsonForFile['modules'] === []) {
+            $jsonForFile['modules'] = new \stdClass();
+        }
+        if ($jsonForFile['themes'] === []) {
+            $jsonForFile['themes'] = new \stdClass();
+        }
+
+        $this->assertValidContract($jsonForFile);
+        $this->writeFile($this->getConfigFilePath()['json'], json_encode($jsonForFile, JSON_PRETTY_PRINT));
         $this->configData = $jsonConfig;
         return $this->configData;
     }
@@ -187,6 +204,36 @@ class ConfigManager
     {
         $this->get();
         return isset($this->configData['themes'][$themeName]);
+    }
+
+    /**
+     * Diff the on-disk contract against the contract recomputed from the current
+     * enabled modules/themes.
+     *
+     * @return array{
+     *     modules: array{added: string[], removed: string[], changed: string[]},
+     *     themes: array{added: string[], removed: string[], changed: string[]}
+     * }
+     * @throws FileSystemException
+     * @throws LocalizedException
+     */
+    public function detectDrift(): array
+    {
+        $current = $this->get();
+
+        $expectedModules = array_map(
+            static fn(array $module): array => ['src' => $module['path']],
+            $this->moduleList->getAllEnabled()
+        );
+        $expectedThemes = array_map(
+            static fn(array $theme): array => ['src' => $theme['path'], 'parent' => $theme['parent_code']],
+            $this->themeList->getAllEnabled()
+        );
+
+        return [
+            'modules' => ContractDiff::section($current['modules'] ?? [], $expectedModules),
+            'themes' => ContractDiff::section($current['themes'] ?? [], $expectedThemes),
+        ];
     }
 
     /**

@@ -11,7 +11,7 @@ namespace MageObsidian\ModernFrontend\Framework\View\Asset\PreProcessor;
 use Magento\Framework\Exception\FileSystemException;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\View\Asset\File\FallbackContext;
-use MageObsidian\ModernFrontend\Service\ConfigManager;
+use MageObsidian\ModernFrontend\Api\ConfigManagerInterface;
 use Magento\Framework\View\Asset\PreProcessor\Chain;
 use Magento\Framework\View\Asset\PreProcessor\Pool;
 
@@ -26,10 +26,10 @@ class PoolPlugin
     /**
      * PoolPlugin constructor.
      *
-     * @param ConfigManager $configManager
+     * @param ConfigManagerInterface $configManager
      */
     public function __construct(
-        private readonly ConfigManager $configManager
+        private readonly ConfigManagerInterface $configManager
     ) {
     }
 

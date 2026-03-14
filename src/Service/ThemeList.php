@@ -8,11 +8,12 @@
 
 namespace MageObsidian\ModernFrontend\Service;
 
+use MageObsidian\ModernFrontend\Api\ThemeListInterface;
 use MageObsidian\ModernFrontend\Service\ThemeList\Loader;
 use Magento\Framework\Exception\FileSystemException;
 use Magento\Framework\Exception\LocalizedException;
 
-class ThemeList
+class ThemeList implements ThemeListInterface
 {
     /**
      * @var array|null

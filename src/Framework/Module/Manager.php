@@ -8,7 +8,7 @@
 
 namespace MageObsidian\ModernFrontend\Framework\Module;
 
-use MageObsidian\ModernFrontend\Service\ConfigManager;
+use MageObsidian\ModernFrontend\Api\ConfigManagerInterface;
 use Magento\Framework\Exception\FileSystemException;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Module\Manager as MagentoManager;
@@ -29,7 +29,7 @@ class Manager extends MagentoManager
      * @param Output\ConfigInterface $outputConfig
      * @param ModuleListInterface $moduleList
      * @param DesignInterface $design
-     * @param ConfigManager $configManager
+     * @param ConfigManagerInterface $configManager
      * @param array $outputConfigPaths
      *
      * @return void
@@ -41,7 +41,7 @@ class Manager extends MagentoManager
         Output\ConfigInterface $outputConfig,
         ModuleListInterface $moduleList,
         private readonly DesignInterface $design,
-        private readonly ConfigManager $configManager,
+        private readonly ConfigManagerInterface $configManager,
         array $outputConfigPaths = []
     ) {
         parent::__construct($outputConfig, $moduleList, $outputConfigPaths);

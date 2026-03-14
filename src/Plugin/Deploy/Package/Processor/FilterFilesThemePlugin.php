@@ -8,7 +8,7 @@
 
 namespace MageObsidian\ModernFrontend\Plugin\Deploy\Package\Processor;
 
-use MageObsidian\ModernFrontend\Service\ConfigManager;
+use MageObsidian\ModernFrontend\Api\ConfigManagerInterface;
 use Magento\Deploy\Package\Package;
 use Magento\Deploy\Package\Processor\ProcessorInterface;
 use Magento\Framework\Exception\FileSystemException;
@@ -17,7 +17,7 @@ use Magento\Framework\Exception\LocalizedException;
 readonly class FilterFilesThemePlugin
 {
     public function __construct(
-        private ConfigManager $configManager
+        private ConfigManagerInterface $configManager
     ) {
     }
 
