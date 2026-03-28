@@ -13,7 +13,7 @@
  * the same CSV / language-pack flow as the rest of the storefront.
  */
 import { shallowRef } from 'vue';
-import { translatePhrase, readI18nConfig, loadDictionary } from 'mage-obsidian/service/i18nCore.js';
+import { translatePhrase, readI18nConfig, loadDictionary } from 'mage-obsidian/runtime/i18nCore.js';
 
 const dictionary = shallowRef({});
 let loadStarted = false;
