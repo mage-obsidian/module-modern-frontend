@@ -6,9 +6,12 @@ declare(strict_types=1);
  *
  * These tests exercise pure logic only, so they must run without a Magento
  * install. When the Composer autoloader is present (module installed inside a
- * Magento root) it is used; otherwise the sources under test are required
- * directly. Loading a class never triggers loading of its type-hinted
- * dependencies, so the pure static methods remain callable either way.
+ * Magento root) it is used and takes precedence; otherwise a PSR-4 fallback
+ * loads this module's sources directly from `src/`. Loading a class never
+ * triggers loading of its type-hinted dependencies, so the pure static methods
+ * remain callable even when the Magento framework is absent (CI). Tests that
+ * mock Magento framework types are excluded from the standalone suite (see
+ * phpunit.ci.xml).
  */
 
 $autoloadCandidates = [
@@ -23,30 +26,16 @@ foreach ($autoloadCandidates as $autoload) {
     }
 }
 
-if (!class_exists(\MageObsidian\ModernFrontend\Plugin\Deploy\Service\DeployViteContentPlugin::class, false)) {
-    require __DIR__ . '/../../Plugin/Deploy/Service/DeployViteContentPlugin.php';
-}
-
-if (!class_exists(\MageObsidian\ModernFrontend\Service\Dev\ViteEnvFile::class, false)) {
-    require __DIR__ . '/../../Service/Dev/ViteEnvFile.php';
-}
-
-if (!class_exists(\MageObsidian\ModernFrontend\Service\Dev\DevServerProcess::class, false)) {
-    require __DIR__ . '/../../Service/Dev/DevServerProcess.php';
-}
-
-if (!class_exists(\MageObsidian\ModernFrontend\Service\Dev\ModeAdvisor::class, false)) {
-    require __DIR__ . '/../../Service/Dev/ModeAdvisor.php';
-}
-
-if (!class_exists(\MageObsidian\ModernFrontend\Service\Dev\NginxSnippet::class, false)) {
-    require __DIR__ . '/../../Service/Dev/NginxSnippet.php';
-}
-
-if (!class_exists(\MageObsidian\ModernFrontend\Service\Vue\PropsEncoder::class, false)) {
-    require __DIR__ . '/../../Service/Vue/PropsEncoder.php';
-}
-
-if (!class_exists(\MageObsidian\ModernFrontend\Service\Contract\ContractDiff::class, false)) {
-    require __DIR__ . '/../../Service/Contract/ContractDiff.php';
-}
+// PSR-4 fallback for the module namespace. Registered after Composer's
+// autoloader so it only resolves classes Composer can't (i.e. standalone runs).
+spl_autoload_register(static function (string $class): void {
+    $prefix = 'MageObsidian\\ModernFrontend\\';
+    if (!str_starts_with($class, $prefix)) {
+        return;
+    }
+    $relative = substr($class, strlen($prefix));
+    $path = __DIR__ . '/../../' . str_replace('\\', '/', $relative) . '.php';
+    if (is_file($path)) {
+        require $path;
+    }
+});
