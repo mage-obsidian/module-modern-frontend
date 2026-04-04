@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    CI unit suite: pure-logic tests that run on a vanilla PHP runner without a
+    Magento install (no Composer install, no marketplace auth). The two tests
+    that mock Magento framework types (ConfigManagerTest, ViteResolverTest) are
+    excluded here; they run in a real Magento root (see phpunit.xml).
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.5/phpunit.xsd"
+         bootstrap="src/Test/Unit/bootstrap.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache"
+         failOnWarning="true"
+         failOnRisky="true">
+    <testsuites>
+        <testsuite name="MageObsidian ModernFrontend Standalone Unit">
+            <directory>src/Test/Unit</directory>
+            <exclude>src/Test/Unit/Service/ConfigManagerTest.php</exclude>
+            <exclude>src/Test/Unit/ViewModel/ViteResolverTest.php</exclude>
+        </testsuite>
+    </testsuites>
+</phpunit>

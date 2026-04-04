@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit:
+    name: Standalone unit tests (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['8.3', '8.4']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: phpunit:10.5
+          extensions: ctype, dom, json, libxml, mbstring, tokenizer, xml, xmlwriter
+          coverage: none
+      - name: Lint PHP sources
+        run: find src -name '*.php' -print0 | xargs -0 -n1 -P4 php -l
+      - name: Validate contract JSON schema parses
+        run: php -r '$s = json_decode(file_get_contents("src/etc/mage_obsidian_frontend_contract.schema.json")); if ($s === null) { fwrite(STDERR, "schema is not valid JSON\n"); exit(1); }'
+      - name: Standalone unit suite
+        run: phpunit -c phpunit.ci.xml
