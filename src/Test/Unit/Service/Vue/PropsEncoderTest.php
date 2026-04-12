@@ -9,37 +9,38 @@ use PHPUnit\Framework\TestCase;
 
 class PropsEncoderTest extends TestCase
 {
-    public function testEncodesPlainPropsAsJson(): void
+    public function testEncodesPlainPropsAsAttributeSafeJson(): void
     {
+        // Structural quotes are entity-escaped so the JSON is safe inside a
+        // double-quoted HTML attribute.
         $this->assertSame(
-            '{"label":"Add","count":3}',
-            PropsEncoder::encode('Vendor::Component', ['label' => 'Add', 'count' => 3])
+            '{&quot;label&quot;:&quot;Add&quot;,&quot;count&quot;:3}',
+            PropsEncoder::encodeAttribute('Vendor::Component', ['label' => 'Add', 'count' => 3])
         );
     }
 
-    public function testEmptyPropsEncodeAsEmptyObject(): void
+    public function testEmptyPropsEncodeAsEmptyArray(): void
     {
-        // [] would encode as "[]", which Vue accepts, but the call must not throw.
-        $this->assertSame('[]', PropsEncoder::encode('Vendor::Component', []));
+        // [] encodes as "[]" (no special characters to escape); must not throw.
+        $this->assertSame('[]', PropsEncoder::encodeAttribute('Vendor::Component', []));
     }
 
-    public function testEscapesHtmlAndScriptBreakoutCharacters(): void
+    public function testEscapesHtmlAndAttributeBreakoutCharacters(): void
     {
-        $payload = '</script><img src=x onerror=alert(1)>';
-        $encoded = PropsEncoder::encode('Vendor::Component', [
+        $payload = '</div><img src=x onerror=alert(1)>';
+        $encoded = PropsEncoder::encodeAttribute('Vendor::Component', [
             'html' => $payload,
             'quote' => '"\'&',
         ]);
 
-        // The HEX flags turn <, >, &, ' and " into \u00XX escapes, so no literal
-        // breakout sequence survives in the inlined payload.
-        $this->assertStringNotContainsString('</script>', $encoded);
-        $this->assertStringNotContainsString('<img', $encoded);
+        // No literal <, >, ", or ' survives to break out of the attribute.
         $this->assertStringNotContainsString('<', $encoded);
-        $this->assertStringNotContainsString('&', $encoded);
+        $this->assertStringNotContainsString('>', $encoded);
+        $this->assertStringNotContainsString('"', $encoded);
+        $this->assertStringNotContainsString("'", $encoded);
 
-        // It is still valid JSON that decodes back to the original values.
-        $decoded = json_decode($encoded, true);
+        // Decoding the entities (as the browser does) yields the original values.
+        $decoded = json_decode(htmlspecialchars_decode($encoded, ENT_QUOTES), true);
         $this->assertSame($payload, $decoded['html']);
         $this->assertSame('"\'&', $decoded['quote']);
     }
@@ -50,6 +51,6 @@ class PropsEncoderTest extends TestCase
         $this->expectExceptionMessage('Vendor::Broken');
 
         // A malformed UTF-8 byte sequence cannot be JSON-encoded.
-        PropsEncoder::encode('Vendor::Broken', ['bad' => "\xB1\x31"]);
+        PropsEncoder::encodeAttribute('Vendor::Broken', ['bad' => "\xB1\x31"]);
     }
 }

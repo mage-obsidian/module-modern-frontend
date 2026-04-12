@@ -100,16 +100,27 @@ class Template extends MagentoTemplate
     }
 
     /**
-     * Generates the HTML to load a Vue component dynamically.
+     * Emit an island marker for a Vue component (mounted by the page bootstrap).
      *
      * @param string $componentName Component name in the format "Vendor::Component".
      * @param array $props Properties to pass to the Vue component.
+     * @param bool $eager Mount immediately instead of on viewport entry.
      *
-     * @return string HTML code to integrate the Vue component.
+     * @return string The island marker markup.
      */
-    public function renderVueComponent(string $componentName, array $props = []): string
+    public function renderVueComponent(string $componentName, array $props = [], bool $eager = false): string
     {
-        return $this->viteResolver->renderVueComponent($componentName, $props);
+        return $this->viteResolver->renderVueComponent($componentName, $props, $eager);
+    }
+
+    /**
+     * URL of the page-level island bootstrap.
+     *
+     * @return string Full file URL.
+     */
+    public function getIslandsRuntimeUrl(): string
+    {
+        return $this->viteResolver->getIslandsRuntimeUrl();
     }
 
     /**

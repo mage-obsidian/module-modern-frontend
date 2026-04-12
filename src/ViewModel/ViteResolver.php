@@ -12,7 +12,6 @@ namespace MageObsidian\ModernFrontend\ViewModel;
 use InvalidArgumentException;
 use Magento\Framework\App\RequestInterface;
 use Magento\Framework\Locale\ResolverInterface as LocaleResolver;
-use Magento\Framework\Math\Random;
 use Magento\Framework\View\Asset\Repository;
 use Magento\Framework\View\Element\Block\ArgumentInterface;
 use MageObsidian\ModernFrontend\Api\Data\ConfigInterface;
@@ -23,9 +22,10 @@ use RuntimeException;
 class ViteResolver implements ArgumentInterface
 {
     /**
-     * Framework i18n runtime, shipped as a module web asset (Vendor::js/i18n).
+     * Page-level island bootstrap, shipped as a module web asset. Discovers and
+     * mounts the markers emitted by {@see self::renderVueComponent()}.
      */
-    private const I18N_RUNTIME_NAME = 'MageObsidian_ModernFrontend::js/i18n';
+    private const ISLANDS_RUNTIME_NAME = 'MageObsidian_ModernFrontend::js/islands';
 
     /**
      * Magento's native per-locale JS dictionary, materialized at
@@ -39,14 +39,12 @@ class ViteResolver implements ArgumentInterface
      * @param Repository $assetRepository
      * @param RequestInterface $request
      * @param ConfigProvider $configProvider
-     * @param Random $mathRandom
      * @param LocaleResolver $localeResolver
      */
     public function __construct(
         private readonly Repository $assetRepository,
         private readonly RequestInterface $request,
         private readonly ConfigProvider $configProvider,
-        private readonly Random $mathRandom,
         private readonly LocaleResolver $localeResolver
     ) {
     }
@@ -134,42 +132,43 @@ class ViteResolver implements ArgumentInterface
     }
 
     /**
-     * Generates the HTML to load a Vue component dynamically.
+     * Emit an island marker for a Vue component.
+     *
+     * Instead of an inline mount script per call, this renders an inert marker
+     * that the page-level bootstrap ({@see self::getIslandsRuntimeUrl()})
+     * discovers and mounts — by default lazily, when the marker enters the
+     * viewport, so below-the-fold components cost nothing until scrolled to.
+     * The Vue runtime and i18n plugin load once per page and are shared.
      *
      * @param string $componentName Component name in the format "Vendor::Component".
      * @param array $props Properties to pass to the Vue component.
+     * @param bool $eager Mount immediately instead of on viewport entry (above-the-fold).
      *
-     * @return string HTML code to integrate the Vue component.
+     * @return string The island marker markup.
      */
-    public function renderVueComponent(string $componentName, array $props = []): string
+    public function renderVueComponent(string $componentName, array $props = [], bool $eager = false): string
     {
-        $componentPath = $this->resolvePathByName($componentName, ConfigInterface::VUE_COMPONENTS_PATH);
-        $vueUrl = $this->getViewLibFileUrl('vue');
-        $i18nUrl = $this->resolvePathByName(self::I18N_RUNTIME_NAME);
+        $componentUrl = $this->resolvePathByName($componentName, ConfigInterface::VUE_COMPONENTS_PATH);
 
-        // Generate a unique ID for the Vue component's container.
-        $uniqueId = $this->mathRandom->getUniqueHash('vue-component-');
+        // Fails loudly instead of emitting a broken attribute when props are not
+        // JSON-encodable.
+        $propsAttr = PropsEncoder::encodeAttribute($componentName, $props);
+        $componentAttr = htmlspecialchars($componentUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $strategy = $eager ? 'eager' : 'visible';
 
-        // Convert properties to JSON. Fails loudly instead of emitting broken
-        // markup (e.g. `createApp(Component, false)`) when props are not encodable.
-        $propsJson = PropsEncoder::encode($componentName, $props);
-
-        // Return the HTML and JavaScript needed to mount the Vue component. The
-        // i18n plugin is registered automatically so `$t(...)` is available in
-        // every PHP-rendered component without extra wiring.
         return <<<HTML
-            <div id="$uniqueId"></div>
-            <script type="module">
-                import { createApp } from '$vueUrl';
-                import Component from '$componentPath';
-                import obsidianI18n from '$i18nUrl';
-                try {
-                    createApp(Component, $propsJson).use(obsidianI18n).mount('#$uniqueId');
-                } catch (error) {
-                    console.error('Failed to mount Vue component:', error);
-                }
-            </script>
-        HTML;
+            <div data-mage-island data-component="$componentAttr" data-props="$propsAttr" data-strategy="$strategy"></div>
+            HTML;
+    }
+
+    /**
+     * URL of the page-level island bootstrap (loaded once via Block\IslandsRuntime).
+     *
+     * @return string Full file URL.
+     */
+    public function getIslandsRuntimeUrl(): string
+    {
+        return $this->resolvePathByName(self::ISLANDS_RUNTIME_NAME);
     }
 
     /**
