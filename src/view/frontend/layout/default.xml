@@ -17,6 +17,8 @@
                    name="mage_obsidian.islands_runtime"/>
             <block class="MageObsidian\ModernFrontend\Block\DevServerGuard"
                    name="mage_obsidian.dev_server_guard"/>
+            <block class="MageObsidian\ModernFrontend\Block\SchemaOrgRuntime"
+                   name="mage_obsidian.schema_org_runtime"/>
         </referenceContainer>
     </body>
 </page>

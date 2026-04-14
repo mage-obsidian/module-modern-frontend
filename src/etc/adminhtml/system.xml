@@ -78,6 +78,17 @@
                     <config_path>mage_obsidian/dev_server/allowed_hosts</config_path>
                 </field>
             </group>
+            <group id="seo" translate="label" type="text" sortOrder="30"
+                   showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>SEO</label>
+                <field id="structured_data_enabled" translate="label comment" type="select" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Emit Structured Data (JSON-LD)</label>
+                    <comment>Auto-emit schema.org structured data (Organization, WebSite, Breadcrumb, Product). Turn off if another extension already provides JSON-LD.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <config_path>mage_obsidian/seo/structured_data_enabled</config_path>
+                </field>
+            </group>
         </section>
     </system>
 </config>

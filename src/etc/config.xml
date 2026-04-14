@@ -14,6 +14,9 @@
                 <public_host>localhost</public_host>
                 <allowed_hosts>localhost</allowed_hosts>
             </dev_server>
+            <seo>
+                <structured_data_enabled>1</structured_data_enabled>
+            </seo>
         </mage_obsidian>
     </default>
 </config>

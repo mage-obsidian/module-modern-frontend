@@ -17,6 +17,8 @@
             <directory>src/Test/Unit</directory>
             <exclude>src/Test/Unit/Service/ConfigManagerTest.php</exclude>
             <exclude>src/Test/Unit/ViewModel/ViteResolverTest.php</exclude>
+            <exclude>src/Test/Unit/ViewModel/SchemaOrgTest.php</exclude>
+            <exclude>src/Test/Unit/Model/SchemaOrg/CurrentPageSchemaProviderTest.php</exclude>
         </testsuite>
     </testsuites>
 </phpunit>

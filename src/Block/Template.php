@@ -13,6 +13,7 @@ use MageObsidian\ModernFrontend\Model\Config\ConfigProvider;
 use InvalidArgumentException;
 use Magento\Framework\View\Element\Template as MagentoTemplate;
 use Magento\Framework\View\Element\Template\Context;
+use MageObsidian\ModernFrontend\ViewModel\SchemaOrg;
 use MageObsidian\ModernFrontend\ViewModel\ViteResolver;
 use RuntimeException;
 
@@ -27,11 +28,13 @@ class Template extends MagentoTemplate
      *
      * @param Context $context
      * @param ViteResolver $viteResolver
+     * @param SchemaOrg $schemaOrg
      * @param array $data
      */
     public function __construct(
         Context $context,
         private readonly ViteResolver $viteResolver,
+        private readonly SchemaOrg $schemaOrg,
         array $data = []
     ) {
         parent::__construct($context, $data);
@@ -158,6 +161,20 @@ class Template extends MagentoTemplate
         string $size = '24',
     ): string {
         return $this->viteResolver->getHeroIcon($iconName, $iconSet, $size);
+    }
+
+    /**
+     * Render a schema.org JSON-LD `<script>` for a custom type (e.g. FAQPage).
+     * Backs the Twig `json_ld` helper, mirroring the SchemaOrg ViewModel for phtml.
+     *
+     * @param string $type schema.org `@type`.
+     * @param array<string,mixed> $data Node body (without `@context`/`@type`).
+     *
+     * @return string
+     */
+    public function renderJsonLd(string $type, array $data = []): string
+    {
+        return $this->schemaOrg->renderJsonLd($type, $data);
     }
 
     /**

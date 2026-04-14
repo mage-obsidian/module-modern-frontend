@@ -26,6 +26,8 @@ class ConfigProvider implements ArgumentInterface
     public const string DEV_SERVER_HMR_PATH = self::DEV_SERVER_PATH . 'hmr_path';
     public const string DEV_SERVER_PUBLIC_HOST = self::DEV_SERVER_PATH . 'public_host';
     public const string DEV_SERVER_ALLOWED_HOSTS = self::DEV_SERVER_PATH . 'allowed_hosts';
+    public const string SEO_PATH = self::ROOT_PATH . 'seo/';
+    public const string STRUCTURED_DATA_ENABLED = self::SEO_PATH . 'structured_data_enabled';
 
     /**
      * @param ScopeConfigInterface $scopeConfig
@@ -48,6 +50,19 @@ class ConfigProvider implements ArgumentInterface
             return false;
         }
         return (bool)$this->scopeConfig->getValue(self::HMR_ENABLED, ScopeInterface::SCOPE_STORE);
+    }
+
+    /**
+     * Whether the storefront should auto-emit schema.org structured data.
+     *
+     * On by default; can be turned off per store (e.g. when another SEO
+     * extension already emits JSON-LD, to avoid duplicate structured data).
+     *
+     * @return bool
+     */
+    public function isStructuredDataEnabled(): bool
+    {
+        return (bool)$this->scopeConfig->getValue(self::STRUCTURED_DATA_ENABLED, ScopeInterface::SCOPE_STORE);
     }
 
     /**
