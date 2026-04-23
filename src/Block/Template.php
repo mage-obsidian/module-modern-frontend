@@ -13,6 +13,7 @@ use MageObsidian\ModernFrontend\Model\Config\ConfigProvider;
 use InvalidArgumentException;
 use Magento\Framework\View\Element\Template as MagentoTemplate;
 use Magento\Framework\View\Element\Template\Context;
+use MageObsidian\ModernFrontend\ViewModel\Image;
 use MageObsidian\ModernFrontend\ViewModel\SchemaOrg;
 use MageObsidian\ModernFrontend\ViewModel\ViteResolver;
 use RuntimeException;
@@ -29,12 +30,14 @@ class Template extends MagentoTemplate
      * @param Context $context
      * @param ViteResolver $viteResolver
      * @param SchemaOrg $schemaOrg
+     * @param Image $image
      * @param array $data
      */
     public function __construct(
         Context $context,
         private readonly ViteResolver $viteResolver,
         private readonly SchemaOrg $schemaOrg,
+        private readonly Image $image,
         array $data = []
     ) {
         parent::__construct($context, $data);
@@ -175,6 +178,20 @@ class Template extends MagentoTemplate
     public function renderJsonLd(string $type, array $data = []): string
     {
         return $this->schemaOrg->renderJsonLd($type, $data);
+    }
+
+    /**
+     * Render a Core-Web-Vitals-friendly `<img>`/`<picture>`. Backs the Twig
+     * `image` helper, mirroring the Image ViewModel for phtml.
+     *
+     * @param string $src A URL, or a `Vendor_Module::path` asset id.
+     * @param array<string,mixed> $options
+     *
+     * @return string
+     */
+    public function renderImage(string $src, array $options = []): string
+    {
+        return $this->image->render($src, $options);
     }
 
     /**
