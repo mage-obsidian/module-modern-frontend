@@ -15,11 +15,19 @@
  */
 import { createPinia, setActivePinia, getActivePinia } from 'pinia';
 
+// Where the created instance is published for the island bootstrap to find.
+const GLOBAL_KEY = '__MAGE_OBSIDIAN_PINIA__';
+
 let shared;
 
 /**
  * Return the page-wide shared Pinia instance, creating and activating it on
  * first use (reusing an already-active one if present).
+ *
+ * The instance is also published on `window` so the island bootstrap can
+ * install it (`app.use`) on the apps whose components actually use a store —
+ * giving them a proper injection context (no Pinia dev warning) — without the
+ * bootstrap importing Pinia and thus loading it on pages that never use a store.
  *
  * @returns {import('pinia').Pinia}
  */
@@ -27,6 +35,9 @@ export function ensureSharedPinia() {
     if (!shared) {
         shared = getActivePinia() ?? createPinia();
         setActivePinia(shared);
+        if (typeof window !== 'undefined') {
+            window[GLOBAL_KEY] = shared;
+        }
     }
     return shared;
 }

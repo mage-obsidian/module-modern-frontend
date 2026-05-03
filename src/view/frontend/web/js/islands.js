@@ -40,7 +40,18 @@ async function start() {
         // so this is an intentionally un-analyzable dynamic import.
         importComponent: (source) => import(/* @vite-ignore */ source),
         createApp,
-        configureApp: (app) => app.use(obsidianI18n),
+        configureApp: (app) => {
+            app.use(obsidianI18n);
+            // A store module (imported by this island's component above) publishes
+            // the shared Pinia here. Installing it gives stores a proper injection
+            // context; islands whose components use no store leave it undefined and
+            // never load Pinia. The bootstrap reads the global rather than importing
+            // Pinia, so pages without any store ship none.
+            const sharedPinia = window.__MAGE_OBSIDIAN_PINIA__;
+            if (sharedPinia) {
+                app.use(sharedPinia);
+            }
+        },
         observe: observeOnce,
     });
 }
