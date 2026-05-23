@@ -26,6 +26,7 @@ import {
     buildSectionLoadUrl,
     readCookie,
     needsHydration,
+    expiredSectionNames,
 } from 'mage-obsidian/runtime/sectionStoreCore.ts';
 import { ensureSharedPinia } from 'MageObsidian_ModernFrontend::js/store';
 
@@ -37,6 +38,8 @@ import { ensureSharedPinia } from 'MageObsidian_ModernFrontend::js/store';
  * @property {string} versionKey      localStorage key holding the last synced version.
  * @property {string} versionCookie   Cookie name advertising the current version.
  * @property {string} [reloadEvents]  Space-separated jQuery document events that signal an update.
+ * @property {number} [lifetimeSeconds]   Per-section freshness window; 0 disables the time-based backstop.
+ * @property {string[]} [expirableSections] Sections eligible for time-based expiry (the rest never age out).
  */
 
 /**
@@ -53,6 +56,8 @@ export function createSectionStore(config) {
         versionKey,
         versionCookie,
         reloadEvents = 'customer-data-reload customer-data-invalidate',
+        lifetimeSeconds = 0,
+        expirableSections = [],
     } = config;
 
     // Activate the shared Pinia before any component calls the store.
@@ -145,11 +150,24 @@ export function createSectionStore(config) {
         /**
          * Hydrate from the server on first use when the cache is empty or the
          * version has moved. A no-op on steady-state loads, so warm pages stay
-         * request-free.
+         * request-free. As a backstop, expirable sections that have aged past
+         * their lifetime are reloaded too — this catches server-side changes the
+         * version cookie misses (it only moves on POST), e.g. a cart section that
+         * outlived its quote after the PHP session expired.
          */
         function hydrate() {
             if (needsHydration(sections.value, readSyncedVersion(), cookieVersion())) {
                 reload([]);
+                return;
+            }
+            const expired = expiredSectionNames(
+                sections.value,
+                lifetimeSeconds,
+                expirableSections,
+                Math.floor(Date.now() / 1000),
+            );
+            if (expired.length) {
+                reload(expired);
             }
         }
 

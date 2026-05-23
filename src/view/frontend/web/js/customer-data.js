@@ -19,6 +19,13 @@
  * `exposeNpmPackages` (the build fails loudly otherwise).
  */
 import { createSectionStore } from 'MageObsidian_ModernFrontend::js/section-store';
+import { readSectionRuntimeConfig } from 'mage-obsidian/runtime/sectionStoreCore.ts';
+
+// Lifetime + expirable sections published by PHP (SectionDataConfig). They feed
+// the time-based backstop so a section whose server data changed without a POST
+// — e.g. the cart after its quote expired with the PHP session — still ages out
+// and reloads, instead of the badge showing a stale count forever.
+const runtime = readSectionRuntimeConfig();
 
 export const useCustomerData = createSectionStore({
     id: 'mageObsidianCustomerData',
@@ -29,6 +36,8 @@ export const useCustomerData = createSectionStore({
     // customer-data is not loaded in this stack), so the binding owns this.
     versionKey: 'mage-cache-storage-section-version',
     versionCookie: 'private_content_version',
+    lifetimeSeconds: runtime.lifetimeSeconds,
+    expirableSections: runtime.expirableSections,
 });
 
 export default useCustomerData;
