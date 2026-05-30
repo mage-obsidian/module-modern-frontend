@@ -6,7 +6,7 @@
  * them, and (re)load from a server endpoint, re-hydrating when a version cookie
  * moves. It knows nothing about WHICH endpoint/cookie/storage key an integration
  * uses — a binding passes those in. The Magento customer-data adapter is one
- * such binding (see `customer-data.js`), but anyone can create their own.
+ * such binding (see `customer-data.ts`), but anyone can create their own.
  *
  * Read-mostly by design: when a native producer already owns the canonical
  * localStorage store and broadcasts updates, this only mirrors it (Full Page
@@ -27,28 +27,38 @@ import {
     readCookie,
     needsHydration,
     expiredSectionNames,
+    type SectionData,
+    type SectionMap,
 } from 'mage-obsidian/runtime/sectionStoreCore.ts';
 import { ensureSharedPinia } from 'MageObsidian_ModernFrontend::js/store';
 
-/**
- * @typedef {object} SectionStoreConfig
- * @property {string} id              Unique Pinia store id.
- * @property {string} endpoint        Section-load endpoint (e.g. 'customer/section/load/').
- * @property {string} storageKey      localStorage key holding the sections JSON.
- * @property {string} versionKey      localStorage key holding the last synced version.
- * @property {string} versionCookie   Cookie name advertising the current version.
- * @property {string} [reloadEvents]  Space-separated jQuery document events that signal an update.
- * @property {number} [lifetimeSeconds]   Per-section freshness window; 0 disables the time-based backstop.
- * @property {string[]} [expirableSections] Sections eligible for time-based expiry (the rest never age out).
- */
+export interface SectionStoreConfig {
+    /** Unique Pinia store id. */
+    id: string;
+    /** Section-load endpoint (e.g. 'customer/section/load/'). */
+    endpoint: string;
+    /** localStorage key holding the sections JSON. */
+    storageKey: string;
+    /** localStorage key holding the last synced version. */
+    versionKey: string;
+    /** Cookie name advertising the current version. */
+    versionCookie: string;
+    /** Space-separated jQuery document events that signal an update. */
+    reloadEvents?: string;
+    /** Per-section freshness window; 0 disables the time-based backstop. */
+    lifetimeSeconds?: number;
+    /** Sections eligible for time-based expiry (the rest never age out). */
+    expirableSections?: string[];
+}
+
+// Minimal shape of the global jQuery used only for Magento's document events;
+// the legacy library is not a typed dependency of this stack.
+type JQueryLike = (target: unknown) => { on(events: string, handler: () => void): void };
 
 /**
  * Build a reactive, server-synced section store.
- *
- * @param {SectionStoreConfig} config
- * @returns {import('pinia').StoreDefinition}
  */
-export function createSectionStore(config) {
+export function createSectionStore(config: SectionStoreConfig) {
     const {
         id,
         endpoint,
@@ -63,7 +73,7 @@ export function createSectionStore(config) {
     // Activate the shared Pinia before any component calls the store.
     ensureSharedPinia();
 
-    function readStorage() {
+    function readStorage(): SectionMap {
         if (typeof localStorage === 'undefined') {
             return {};
         }
@@ -71,11 +81,11 @@ export function createSectionStore(config) {
     }
 
     /** The current version the producer advertises via cookie. */
-    function cookieVersion() {
+    function cookieVersion(): string {
         return readCookie(typeof document !== 'undefined' ? document.cookie : '', versionCookie);
     }
 
-    function readSyncedVersion() {
+    function readSyncedVersion(): string {
         if (typeof localStorage === 'undefined') {
             return '';
         }
@@ -88,7 +98,7 @@ export function createSectionStore(config) {
      * reload leaves the marker behind so other invalidated sections still
      * re-hydrate next load.
      */
-    function writeStorage(sections, syncedVersion) {
+    function writeStorage(sections: SectionMap, syncedVersion?: string): void {
         if (typeof localStorage === 'undefined') {
             return;
         }
@@ -104,33 +114,24 @@ export function createSectionStore(config) {
     }
 
     return defineStore(id, () => {
-        const sections = ref(readStorage());
+        const sections = ref<SectionMap>(readStorage());
         let subscribed = false;
 
         /** Re-read the canonical store after the producer updates it. */
-        function sync() {
+        function sync(): void {
             sections.value = readStorage();
         }
 
-        /**
-         * A single section (e.g. 'cart', 'customer', 'wishlist'), or null.
-         *
-         * @param {string} name
-         * @returns {Record<string, unknown> | null}
-         */
-        function section(name) {
+        /** A single section (e.g. 'cart', 'customer', 'wishlist'), or null. */
+        function section(name: string): SectionData | null {
             return selectSection(sections.value, name);
         }
 
         /**
          * Explicitly (re)load sections from the never-cached endpoint and merge
-         * the result.
-         *
-         * @param {Array<string>} [names] Empty → all sections.
-         * @param {{ force?: boolean }} [options]
-         * @returns {Promise<void>}
+         * the result. An empty `names` reloads all sections.
          */
-        async function reload(names = [], options = {}) {
+        async function reload(names: string[] = [], options: { force?: boolean } = {}): Promise<void> {
             const url = buildSectionLoadUrl(endpoint, names, { forceNewTimestamp: options.force ?? true });
             try {
                 const response = await fetch(url, {
@@ -155,7 +156,7 @@ export function createSectionStore(config) {
          * version cookie misses (it only moves on POST), e.g. a cart section that
          * outlived its quote after the PHP session expired.
          */
-        function hydrate() {
+        function hydrate(): void {
             if (needsHydration(sections.value, readSyncedVersion(), cookieVersion())) {
                 reload([]);
                 return;
@@ -177,13 +178,13 @@ export function createSectionStore(config) {
          * the global jQuery when present; otherwise we fall back to cross-tab
          * `storage` events.
          */
-        function subscribe() {
+        function subscribe(): void {
             if (subscribed || typeof window === 'undefined') {
                 return;
             }
             subscribed = true;
 
-            const jq = window.jQuery;
+            const jq = (window as unknown as { jQuery?: JQueryLike }).jQuery;
             if (typeof jq === 'function') {
                 jq(window.document).on(reloadEvents, sync);
                 return;

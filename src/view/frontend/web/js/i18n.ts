@@ -12,13 +12,18 @@
  * are picked up by `bin/magento mage-obsidian:i18n:collect` and translated with
  * the same CSV / language-pack flow as the rest of the storefront.
  */
-import { shallowRef } from 'vue';
-import { translatePhrase, readI18nConfig, loadDictionary } from 'mage-obsidian/runtime/i18nCore.ts';
+import { shallowRef, type App } from 'vue';
+import {
+    translatePhrase,
+    readI18nConfig,
+    loadDictionary,
+    type Dictionary,
+} from 'mage-obsidian/runtime/i18nCore.ts';
 
-const dictionary = shallowRef({});
+const dictionary = shallowRef<Dictionary>({});
 let loadStarted = false;
 
-function ensureDictionaryLoading() {
+function ensureDictionaryLoading(): void {
     if (loadStarted) {
         return;
     }
@@ -32,21 +37,15 @@ function ensureDictionaryLoading() {
 /**
  * Translate a phrase, interpolating `%1`, `%2`, … placeholders. Reads the
  * reactive dictionary so usage inside a render re-runs when it loads.
- *
- * @param {string} phrase
- * @param {...unknown} args
- * @returns {string}
  */
-export function translate(phrase, ...args) {
+export function translate(phrase: string, ...args: unknown[]): string {
     return translatePhrase(dictionary.value, phrase, args);
 }
 
 /**
  * Composable for `<script setup>` components.
- *
- * @returns {{ t: typeof translate, locale: string }}
  */
-export function useTranslate() {
+export function useTranslate(): { t: typeof translate; locale: string } {
     ensureDictionaryLoading();
     return { t: translate, locale: readI18nConfig().locale };
 }
@@ -56,7 +55,7 @@ export function useTranslate() {
  * `inject('obsidianTranslate')`.
  */
 export const obsidianI18n = {
-    install(app) {
+    install(app: App): void {
         ensureDictionaryLoading();
         app.config.globalProperties.$t = translate;
         app.provide('obsidianTranslate', translate);

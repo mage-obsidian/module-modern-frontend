@@ -13,12 +13,18 @@
  * To author your own cross-island store, call `ensureSharedPinia()` at the top
  * of your store module before `defineStore`.
  */
-import { createPinia, setActivePinia, getActivePinia } from 'pinia';
+import { createPinia, setActivePinia, getActivePinia, type Pinia } from 'pinia';
+
+declare global {
+    interface Window {
+        __MAGE_OBSIDIAN_PINIA__?: Pinia;
+    }
+}
 
 // Where the created instance is published for the island bootstrap to find.
 const GLOBAL_KEY = '__MAGE_OBSIDIAN_PINIA__';
 
-let shared;
+let shared: Pinia | undefined;
 
 /**
  * Return the page-wide shared Pinia instance, creating and activating it on
@@ -28,10 +34,8 @@ let shared;
  * install it (`app.use`) on the apps whose components actually use a store —
  * giving them a proper injection context (no Pinia dev warning) — without the
  * bootstrap importing Pinia and thus loading it on pages that never use a store.
- *
- * @returns {import('pinia').Pinia}
  */
-export function ensureSharedPinia() {
+export function ensureSharedPinia(): Pinia {
     if (!shared) {
         shared = getActivePinia() ?? createPinia();
         setActivePinia(shared);

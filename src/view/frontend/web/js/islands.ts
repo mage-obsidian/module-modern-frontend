@@ -10,9 +10,10 @@
  * side effects: dynamic component import, app creation, plugin wiring, and
  * viewport observation for the default "visible" (lazy) strategy.
  */
+import type { App } from 'vue';
 import { hydrateAll } from 'mage-obsidian/runtime/islands.ts';
 
-function observeOnce(element, onVisible) {
+function observeOnce(element: HTMLElement, onVisible: () => void): void {
     const observer = new IntersectionObserver((entries) => {
         for (const entry of entries) {
             if (entry.isIntersecting) {
@@ -24,23 +25,25 @@ function observeOnce(element, onVisible) {
     observer.observe(element);
 }
 
-async function start() {
-    const markers = document.querySelectorAll('[data-mage-island]');
+async function start(): Promise<void> {
+    const markers = document.querySelectorAll<HTMLElement>('[data-mage-island]');
     if (markers.length === 0) {
         return;
     }
 
     const [{ createApp }, { default: obsidianI18n }] = await Promise.all([
         import('vue'),
-        import('./i18n.js'),
+        import('MageObsidian_ModernFrontend::js/i18n'),
     ]);
 
     hydrateAll(markers, {
         // The component URL is only known at runtime (PHP resolves it per island),
         // so this is an intentionally un-analyzable dynamic import.
-        importComponent: (source) => import(/* @vite-ignore */ source),
+        importComponent: (source: string) => import(/* @vite-ignore */ source),
         createApp,
-        configureApp: (app) => {
+        // The engine's minimal `AppLike` only declares `mount`; the real object
+        // is a full Vue app, so widen the param to call `use` for plugin wiring.
+        configureApp: (app: App) => {
             app.use(obsidianI18n);
             // A store module (imported by this island's component above) publishes
             // the shared Pinia here. Installing it gives stores a proper injection
