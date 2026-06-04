@@ -33,7 +33,7 @@ interface ConfigInterface
     public const string GENERATED_PATH = 'generated';
     public const string VITE_GENERATED_PATH = 'vite_generated';
     public const string MODULE_CSS_EXTEND_FILE = 'module.extend.css';
-    public const string MODULE_CONFIG_FILE = 'module.config.js';
+    public const string MODULE_CONFIG_FILE = 'module.config.ts';
     public const string THEME_CONFIG_FILE = 'theme.config.js';
     public const string THEME_CSS_SOURCE_FILE = 'theme.source.css';
     public const string THEME_FILES_PATH = 'Theme';
