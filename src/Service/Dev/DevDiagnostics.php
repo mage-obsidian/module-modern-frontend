@@ -22,6 +22,13 @@ class DevDiagnostics
 {
     public const DEV_SERVER_HINT = 'Start the dev server: mage-obsidian:build-themes --theme <theme> --dev-server';
 
+    /**
+     * Extensions a config file may carry. The engine loads exactly one filename
+     * (MODULE_CONFIG_FILE / THEME_CONFIG_FILE); a sibling sharing the base name
+     * but any of these other extensions is silently ignored at build time.
+     */
+    public const CONFIG_SHADOW_EXTENSIONS = ['js', 'cjs', 'mjs', 'ts'];
+
     public function evaluateMode(string $mode): CheckResult
     {
         return CheckResult::ok('App mode', sprintf('Current mode: %s.', $mode));
@@ -127,6 +134,61 @@ class DevDiagnostics
         }
 
         return CheckResult::ok('Vite .env', 'All required variables present.');
+    }
+
+    /**
+     * Given the config filename the engine actually loads (e.g. "module.config.ts")
+     * and the filenames present in a directory, return those that share the config
+     * base name but carry a different, build-ignored extension. Pure so the
+     * shadowing rule is unit-testable; the caller supplies the directory listing.
+     *
+     * @param string[] $filenamesPresent
+     * @return string[]
+     */
+    public function shadowsInDirectory(string $expectedFile, array $filenamesPresent): array
+    {
+        $base = pathinfo($expectedFile, PATHINFO_FILENAME);
+        $expectedExt = pathinfo($expectedFile, PATHINFO_EXTENSION);
+
+        $shadows = [];
+        foreach ($filenamesPresent as $name) {
+            if (pathinfo($name, PATHINFO_FILENAME) !== $base) {
+                continue;
+            }
+            $ext = pathinfo($name, PATHINFO_EXTENSION);
+            if ($ext === $expectedExt) {
+                continue;
+            }
+            if (in_array($ext, self::CONFIG_SHADOW_EXTENSIONS, true)) {
+                $shadows[] = $name;
+            }
+        }
+
+        return $shadows;
+    }
+
+    /**
+     * Report config files the engine ignores because their extension differs
+     * from the one the contract resolves. A warning (not an error): the build
+     * still runs, but the author's config silently never loads.
+     *
+     * @param string[] $shadowed Paths of ignored config files.
+     */
+    public function evaluateShadowedConfigs(array $shadowed): CheckResult
+    {
+        if ($shadowed === []) {
+            return CheckResult::ok('Config files', 'No ignored config files detected.');
+        }
+
+        return CheckResult::warn(
+            'Config files',
+            sprintf(
+                '%d config file(s) ignored (extension differs from the one the engine loads): %s.',
+                count($shadowed),
+                implode(', ', $shadowed)
+            ),
+            'Rename each to module.config.ts / theme.config.js (or delete it) so the engine stops skipping it.'
+        );
     }
 
     /**

@@ -105,4 +105,57 @@ class DevDiagnosticsTest extends TestCase
         $this->assertTrue((new ProbeResult(true, 200, 'text/javascript; charset=utf-8'))->isJavaScript());
         $this->assertFalse((new ProbeResult(true, 200, 'text/html'))->isJavaScript());
     }
+
+    public function testShadowsInDirectoryFlagsOtherExtensionsOfTheConfigBase(): void
+    {
+        $shadows = $this->diagnostics->shadowsInDirectory(
+            'module.config.ts',
+            ['module.config.js', 'module.config.cjs', 'module.config.mjs', 'index.js', 'theme.source.css']
+        );
+
+        $this->assertSame(['module.config.js', 'module.config.cjs', 'module.config.mjs'], $shadows);
+    }
+
+    public function testShadowsInDirectoryIgnoresTheExpectedFile(): void
+    {
+        $shadows = $this->diagnostics->shadowsInDirectory('module.config.ts', ['module.config.ts']);
+        $this->assertSame([], $shadows);
+    }
+
+    public function testShadowsInDirectoryHonoursTheExpectedExtension(): void
+    {
+        // theme.config is loaded as .js, so a .ts sibling is the ignored one.
+        $shadows = $this->diagnostics->shadowsInDirectory(
+            'theme.config.js',
+            ['theme.config.js', 'theme.config.ts']
+        );
+        $this->assertSame(['theme.config.ts'], $shadows);
+    }
+
+    public function testShadowsInDirectoryEmptyWhenNoConfigPresent(): void
+    {
+        $this->assertSame(
+            [],
+            $this->diagnostics->shadowsInDirectory('module.config.ts', ['app.js', 'styles.css'])
+        );
+    }
+
+    public function testEvaluateShadowedConfigsEmptyIsOk(): void
+    {
+        $this->assertTrue($this->diagnostics->evaluateShadowedConfigs([])->isOk());
+    }
+
+    public function testEvaluateShadowedConfigsListsFilesAndWarns(): void
+    {
+        $r = $this->diagnostics->evaluateShadowedConfigs([
+            '/app/code/Acme/Catalog/view/frontend/web/module.config.js',
+            '/app/design/frontend/Acme/theme/Magento_Theme/web/module.config.cjs',
+        ]);
+
+        $this->assertSame(CheckResult::STATUS_WARN, $r->status);
+        $this->assertStringContainsString('2 config file(s)', $r->message);
+        $this->assertStringContainsString('module.config.js', $r->message);
+        $this->assertStringContainsString('module.config.cjs', $r->message);
+        $this->assertStringContainsString('module.config.ts', $r->hint);
+    }
 }
