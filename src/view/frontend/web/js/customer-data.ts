@@ -36,6 +36,9 @@ export const useCustomerData = createSectionStore({
     // customer-data is not loaded in this stack), so the binding owns this.
     versionKey: 'mage-cache-storage-section-version',
     versionCookie: 'private_content_version',
+    // Deleted by Magento on login/logout; its absence clears the stale snapshot
+    // (the version cookie doesn't move on logout).
+    sessionCookie: 'mage-cache-sessid',
     lifetimeSeconds: runtime.lifetimeSeconds,
     expirableSections: runtime.expirableSections,
 });

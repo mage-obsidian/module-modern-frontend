@@ -26,6 +26,7 @@ import {
     buildSectionLoadUrl,
     readCookie,
     needsHydration,
+    sessionInvalidated,
     expiredSectionNames,
     type SectionData,
     type SectionMap,
@@ -45,6 +46,9 @@ export interface SectionStoreConfig {
     versionCookie: string;
     /** Space-separated jQuery document events that signal an update. */
     reloadEvents?: string;
+    /** Session marker cookie (e.g. 'mage-cache-sessid'); its absence invalidates
+     *  all sections on login/logout. Omit to disable. */
+    sessionCookie?: string;
     /** Per-section freshness window; 0 disables the time-based backstop. */
     lifetimeSeconds?: number;
     /** Sections eligible for time-based expiry (the rest never age out). */
@@ -68,6 +72,7 @@ export function createSectionStore(config: SectionStoreConfig) {
         reloadEvents = 'customer-data-reload customer-data-invalidate',
         lifetimeSeconds = 0,
         expirableSections = [],
+        sessionCookie = '',
     } = config;
 
     // Activate the shared Pinia before any component calls the store.
@@ -83,6 +88,16 @@ export function createSectionStore(config: SectionStoreConfig) {
     /** The current version the producer advertises via cookie. */
     function cookieVersion(): string {
         return readCookie(typeof document !== 'undefined' ? document.cookie : '', versionCookie);
+    }
+
+    // Session-scoped; Magento deletes it on login/logout, and its absence next
+    // load is what triggers invalidation.
+    function armSessionCookie(): void {
+        if (!sessionCookie || typeof document === 'undefined') {
+            return;
+        }
+        const secure = typeof location !== 'undefined' && location.protocol === 'https:' ? '; Secure' : '';
+        document.cookie = `${sessionCookie}=1; path=/; SameSite=Lax${secure}`;
     }
 
     function readSyncedVersion(): string {
@@ -157,6 +172,15 @@ export function createSectionStore(config: SectionStoreConfig) {
          * outlived its quote after the PHP session expired.
          */
         function hydrate(): void {
+            // Session flipped (marker deleted on login/logout): drop the stale
+            // snapshot and reload fresh — the version cookie misses this.
+            if (sessionInvalidated(typeof document !== 'undefined' ? document.cookie : '', sessionCookie)) {
+                sections.value = {};
+                writeStorage({}, '');
+                armSessionCookie();
+                reload([]);
+                return;
+            }
             if (needsHydration(sections.value, readSyncedVersion(), cookieVersion())) {
                 reload([]);
                 return;
