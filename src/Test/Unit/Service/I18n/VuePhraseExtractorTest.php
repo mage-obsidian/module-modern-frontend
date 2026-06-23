@@ -27,6 +27,16 @@ class VuePhraseExtractorTest extends TestCase
         );
     }
 
+    public function testExtractsMemberStyleFacadeCalls(): void
+    {
+        $source = "announce(ok ? i18n.\$t('Added to cart') : i18n.\$t('Could not add to cart'));";
+
+        $this->assertSame(
+            ['Added to cart', 'Could not add to cart'],
+            $this->extractor->extractFromString($source)
+        );
+    }
+
     public function testIgnoresPlaceholderArguments(): void
     {
         $source = "const msg = \$t('Remove %1', product.name);";
