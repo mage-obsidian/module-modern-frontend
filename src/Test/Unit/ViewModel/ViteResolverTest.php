@@ -61,6 +61,29 @@ class ViteResolverTest extends TestCase
         $this->buildResolver('')->getViteFileUrl('anything');
     }
 
+    public function testGetViteFileUrlStripsWhitespaceLeakedByTheDeployedVersion(): void
+    {
+        // A trailing newline in deployed_version.txt lands inside the URL; it must
+        // not survive (it would make the JSON importmap consuming this URL invalid).
+        $repository = $this->createMock(Repository::class);
+        $repository->method('getUrlWithParams')
+            ->willReturn("/static/version123\n/vite_generated/lib/vue.js");
+
+        $request = $this->createMock(RequestInterface::class);
+        $request->method('isSecure')->willReturn(false);
+
+        $configProvider = $this->createMock(ConfigProvider::class);
+        $configProvider->method('getViteGeneratedPath')->willReturn('vite_generated');
+
+        $locale = $this->createMock(LocaleResolver::class);
+        $locale->method('getLocale')->willReturn('en_US');
+
+        $url = (new ViteResolver($repository, $request, $configProvider, $locale))->getViteFileUrl('lib/vue');
+
+        $this->assertStringNotContainsString("\n", $url);
+        $this->assertSame('/static/version123/vite_generated/lib/vue.js', $url);
+    }
+
     public function testResolvePathByNameSplitsVendorAndPath(): void
     {
         $this->assertSame(

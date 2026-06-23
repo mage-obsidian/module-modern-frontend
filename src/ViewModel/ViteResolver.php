@@ -80,7 +80,11 @@ class ViteResolver implements ArgumentInterface
         if (!pathinfo($path, PATHINFO_EXTENSION)) {
             $path .= '.js';
         }
-        return $this->getViewFileUrl("{$vitePath}/{$path}");
+        // The framework interpolates the deployed-version segment verbatim, so a
+        // stray newline in pub/static/deployed_version.txt leaks into the URL.
+        // HTML href/src tolerate the whitespace, but the JSON importmap that
+        // consumes these URLs does not — strip it so every Vite URL stays valid.
+        return (string)preg_replace('/\s+/', '', $this->getViewFileUrl("{$vitePath}/{$path}"));
     }
 
     /**
