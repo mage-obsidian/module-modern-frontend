@@ -221,8 +221,30 @@ export function createSectionStore(config: SectionStoreConfig) {
             });
         }
 
+        /**
+         * Hydrate off the critical path. Section data (cart/customer/wishlist
+         * counts) is never needed for first paint, so deferring the cold-load
+         * fetch to browser idle keeps the `section/load` request out of the
+         * initial critical chain; warm loads are a no-op regardless. Falls back to
+         * a synchronous hydrate without a window (SSR/tests).
+         */
+        function scheduleHydrate(): void {
+            if (typeof window === 'undefined') {
+                hydrate();
+                return;
+            }
+            const idle = (window as Window & {
+                requestIdleCallback?: (callback: () => void) => number;
+            }).requestIdleCallback;
+            if (typeof idle === 'function') {
+                idle(() => hydrate());
+            } else {
+                window.setTimeout(hydrate, 0);
+            }
+        }
+
         subscribe();
-        hydrate();
+        scheduleHydrate();
 
         return { sections, section, sync, reload };
     });
