@@ -53,10 +53,15 @@ readonly class PackageFilePlugin
      */
     private function canAddFile(PackageFile $file, Package $package): bool
     {
-        $theme = $package->getTheme();
+        $module = $file->getModule() ?? '';
+        $isObsidianModuleFile = $module !== '' && $this->configManager->isModuleEnabled($module);
 
-        // Skip processing if the theme is disabled
-        if (!$this->configManager->isThemeEnabled($theme)) {
+        // Legacy theme packages (blank/luma) deploy normally — EXCEPT for the web
+        // assets of an enabled MageObsidian module. Those are Vite-only ESM/Vue/CSS
+        // and must be filtered out of the legacy Less/RequireJS pipeline regardless
+        // of the theme being deployed; otherwise the pipeline tries to read ESM it
+        // cannot parse. Discriminate by module, not by theme.
+        if (!$isObsidianModuleFile && !$this->configManager->isThemeEnabled($package->getTheme())) {
             return true;
         }
 
