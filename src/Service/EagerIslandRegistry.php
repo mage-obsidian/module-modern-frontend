@@ -10,44 +10,44 @@ declare(strict_types=1);
 namespace MageObsidian\ModernFrontend\Service;
 
 /**
- * Request-scoped collector of the eager island components rendered on the page.
+ * Request-scoped dedup tracker for the modulepreload hints emitted by the eager
+ * islands.
  *
- * The island bootstrap discovers eager markers and dynamically imports each
- * component with a runtime-resolved URL, which Vite cannot preannounce — so the
- * browser only discovers each component's static dependency chain (customer-data
- * → section-store → store → pinia) serially, one round-trip per hop. Recording
- * the eager components here lets {@see \MageObsidian\ModernFrontend\Block\IslandsRuntime}
- * emit `<link rel="modulepreload">` for that chain up front and collapse the
- * waterfall. Shared as a singleton so the ViewModel that renders the markers and
- * the block that emits the bootstrap see the same set.
+ * Each eager island emits `<link rel="modulepreload">` for its own dependency
+ * chunks at its render point (so islands rendered after the page bootstrap —
+ * e.g. body-end drawers/toasts — are still covered, and header islands emit
+ * their hints early). Many islands share the same chunks (vue, pinia,
+ * customer-data, section-store…); this records what has already been emitted in
+ * the request so each chunk is hinted exactly once. Shared as a singleton so
+ * every island marker rendered in the request sees the same set.
  */
 class EagerIslandRegistry
 {
     /**
-     * Output-relative chunk paths (manifest `file` values), used as a set.
+     * Already-emitted preload hrefs, used as a set.
      *
      * @var array<string, true>
      */
-    private array $components = [];
+    private array $emitted = [];
 
     /**
-     * Record an eager component by its build-output-relative chunk path
-     * (e.g. "MageObsidian_Storefront/components/wishlist/WishlistCount.js").
+     * Return the subset of $urls not emitted yet this request, recording them so
+     * later calls do not repeat them.
      *
-     * @param string $componentFile
-     */
-    public function register(string $componentFile): void
-    {
-        $this->components[$componentFile] = true;
-    }
-
-    /**
-     * Every eager component recorded so far, deduplicated.
+     * @param string[] $urls
      *
      * @return string[]
      */
-    public function all(): array
+    public function take(array $urls): array
     {
-        return array_keys($this->components);
+        $fresh = [];
+        foreach ($urls as $url) {
+            if (!isset($this->emitted[$url])) {
+                $this->emitted[$url] = true;
+                $fresh[] = $url;
+            }
+        }
+
+        return $fresh;
     }
 }

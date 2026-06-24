@@ -17,6 +17,7 @@ use Magento\Framework\View\Element\Block\ArgumentInterface;
 use MageObsidian\ModernFrontend\Api\Data\ConfigInterface;
 use MageObsidian\ModernFrontend\Model\Config\ConfigProvider;
 use MageObsidian\ModernFrontend\Service\EagerIslandRegistry;
+use MageObsidian\ModernFrontend\Service\IslandManifest;
 use MageObsidian\ModernFrontend\Service\Vue\PropsEncoder;
 use RuntimeException;
 
@@ -42,13 +43,15 @@ class ViteResolver implements ArgumentInterface
      * @param ConfigProvider $configProvider
      * @param LocaleResolver $localeResolver
      * @param EagerIslandRegistry $eagerIslandRegistry
+     * @param IslandManifest $islandManifest
      */
     public function __construct(
         private readonly Repository $assetRepository,
         private readonly RequestInterface $request,
         private readonly ConfigProvider $configProvider,
         private readonly LocaleResolver $localeResolver,
-        private readonly EagerIslandRegistry $eagerIslandRegistry
+        private readonly EagerIslandRegistry $eagerIslandRegistry,
+        private readonly IslandManifest $islandManifest
     ) {
     }
 
@@ -181,15 +184,40 @@ class ViteResolver implements ArgumentInterface
         $componentAttr = htmlspecialchars($componentUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $strategy = $eager ? 'eager' : 'visible';
 
-        // Eager islands mount synchronously at bootstrap; record them so the
-        // bootstrap block can modulepreload their dependency chunks up front.
-        if ($eager) {
-            $this->eagerIslandRegistry->register($relativePath . '.js');
-        }
+        // Eager islands mount synchronously at bootstrap. Emit modulepreload for
+        // this island's dependency chunks right here, so the browser fetches the
+        // whole graph in parallel instead of walking it one round-trip at a time
+        // once the bootstrap dynamically imports the component. Emitting per
+        // marker (deduplicated across the request) covers islands rendered after
+        // the bootstrap block too — e.g. body-end drawers/toasts.
+        $preload = $eager ? $this->renderEagerPreload($relativePath . '.js') : '';
 
-        return <<<HTML
+        return $preload . <<<HTML
             <div data-mage-island data-component="$componentAttr" data-props="$propsAttr" data-strategy="$strategy"></div>
             HTML;
+    }
+
+    /**
+     * Render the `<link rel="modulepreload">` hints for an eager island's chunk
+     * and its transitive static dependencies, skipping any already emitted this
+     * request.
+     *
+     * @param string $componentFile Output-relative chunk path of the island.
+     */
+    private function renderEagerPreload(string $componentFile): string
+    {
+        $urls = [];
+        foreach ($this->islandManifest->getPreloadFiles([$componentFile]) as $file) {
+            $urls[] = $this->getViteFileUrl($file);
+        }
+
+        $html = '';
+        foreach ($this->eagerIslandRegistry->take($urls) as $url) {
+            $href = htmlspecialchars($url, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            $html .= "<link rel=\"modulepreload\" href=\"{$href}\"/>";
+        }
+
+        return $html;
     }
 
     /**

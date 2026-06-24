@@ -12,7 +12,6 @@ namespace MageObsidian\ModernFrontend\Service;
 use Magento\Framework\Filesystem\Driver\File;
 use Magento\Framework\View\Asset\Repository;
 use MageObsidian\ModernFrontend\Model\Config\ConfigProvider;
-use MageObsidian\ModernFrontend\ViewModel\ViteResolver;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -21,11 +20,15 @@ use Throwable;
  * build manifest (`<generated>/.vite/manifest.json`).
  *
  * Given each component's output chunk, it walks the manifest's static `imports`
- * graph transitively and returns the full closure of chunk URLs to preload, so
+ * graph transitively and returns the full closure of chunk files to preload, so
  * the serial import waterfall (component → customer-data → section-store →
  * store → pinia/vue) is fetched in parallel instead. The manifest is read from
  * the theme source (works in any deploy mode) and cached for the process; any
  * failure degrades to an empty set so the page never breaks over a perf hint.
+ *
+ * Returns output-relative chunk paths (not URLs) so the caller can turn them
+ * into versioned URLs with its own resolver — this keeps the service free of a
+ * dependency on ViteResolver (which depends on this one).
  */
 class IslandManifest
 {
@@ -39,33 +42,27 @@ class IslandManifest
     public function __construct(
         private readonly Repository $assetRepository,
         private readonly ConfigProvider $configProvider,
-        private readonly ViteResolver $viteResolver,
         private readonly File $fileDriver,
         private readonly LoggerInterface $logger
     ) {
     }
 
     /**
-     * Modulepreload URLs for the given component chunks plus their transitive
-     * static dependency chunks, deduplicated.
+     * The given component chunks plus their transitive static dependency chunks,
+     * deduplicated, as output-relative paths.
      *
      * @param string[] $componentFiles Output-relative chunk paths (manifest `file` values).
      *
      * @return string[]
      */
-    public function getPreloadUrls(array $componentFiles): array
+    public function getPreloadFiles(array $componentFiles): array
     {
         $manifest = $this->loadManifest();
         if (!$manifest || !$componentFiles) {
             return [];
         }
 
-        $urls = [];
-        foreach (self::collectPreloadFiles($manifest, $componentFiles) as $file) {
-            $urls[$this->viteResolver->getViteFileUrl($file)] = true;
-        }
-
-        return array_keys($urls);
+        return self::collectPreloadFiles($manifest, $componentFiles);
     }
 
     /**

@@ -9,6 +9,7 @@ use Magento\Framework\Locale\ResolverInterface as LocaleResolver;
 use Magento\Framework\View\Asset\Repository;
 use MageObsidian\ModernFrontend\Model\Config\ConfigProvider;
 use MageObsidian\ModernFrontend\Service\EagerIslandRegistry;
+use MageObsidian\ModernFrontend\Service\IslandManifest;
 use MageObsidian\ModernFrontend\ViewModel\ViteResolver;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -23,9 +24,13 @@ class ViteResolverTest extends TestCase
 {
     private EagerIslandRegistry $eagerIslandRegistry;
 
+    /** Drives the IslandManifest mock used by buildResolver(). */
+    private array $preloadFiles = [];
+
     protected function setUp(): void
     {
         $this->eagerIslandRegistry = new EagerIslandRegistry();
+        $this->preloadFiles = [];
     }
 
     private function buildResolver(string $viteGeneratedPath = 'vite_generated'): ViteResolver
@@ -44,7 +49,17 @@ class ViteResolverTest extends TestCase
         $locale = $this->createMock(LocaleResolver::class);
         $locale->method('getLocale')->willReturn('en_US');
 
-        return new ViteResolver($repository, $request, $configProvider, $locale, $this->eagerIslandRegistry);
+        $islandManifest = $this->createMock(IslandManifest::class);
+        $islandManifest->method('getPreloadFiles')->willReturnCallback(fn(): array => $this->preloadFiles);
+
+        return new ViteResolver(
+            $repository,
+            $request,
+            $configProvider,
+            $locale,
+            $this->eagerIslandRegistry,
+            $islandManifest
+        );
     }
 
     public function testGetViteFileUrlAppendsJsExtensionAndPrefixesGeneratedPath(): void
@@ -86,8 +101,14 @@ class ViteResolverTest extends TestCase
         $locale = $this->createMock(LocaleResolver::class);
         $locale->method('getLocale')->willReturn('en_US');
 
-        $url = (new ViteResolver($repository, $request, $configProvider, $locale, $this->eagerIslandRegistry))
-            ->getViteFileUrl('lib/vue');
+        $url = (new ViteResolver(
+            $repository,
+            $request,
+            $configProvider,
+            $locale,
+            $this->eagerIslandRegistry,
+            $this->createMock(IslandManifest::class)
+        ))->getViteFileUrl('lib/vue');
 
         $this->assertStringNotContainsString("\n", $url);
         $this->assertSame('/static/version123/vite_generated/lib/vue.js', $url);
@@ -141,23 +162,55 @@ class ViteResolverTest extends TestCase
         $this->assertStringContainsString('data-strategy="eager"', $html);
     }
 
-    public function testRenderVueComponentRegistersEagerIslandChunkForPreload(): void
+    public function testRenderVueComponentEmitsModulePreloadForEagerIslandBeforeTheMarker(): void
     {
-        $this->buildResolver()->renderVueComponent('Vendor::Card', [], true);
+        // The manifest closure for this island (component chunk + shared deps).
+        $this->preloadFiles = ['Vendor/components/Card.js', 'lib/pinia.js'];
 
-        // The registered value is the manifest `file` key: the output-relative
-        // chunk path with the components prefix and a .js extension.
-        $this->assertSame(
-            ['Vendor/components/Card.js'],
-            $this->eagerIslandRegistry->all()
+        $html = $this->buildResolver()->renderVueComponent('Vendor::Card', [], true);
+
+        $this->assertStringContainsString(
+            '<link rel="modulepreload" href="/static/vite_generated/Vendor/components/Card.js"/>',
+            $html
+        );
+        $this->assertStringContainsString(
+            '<link rel="modulepreload" href="/static/vite_generated/lib/pinia.js"/>',
+            $html
+        );
+        // Hints must precede the marker that the bootstrap dynamically imports.
+        $this->assertLessThan(
+            strpos($html, 'data-mage-island'),
+            strpos($html, '<link rel="modulepreload"')
         );
     }
 
-    public function testRenderVueComponentDoesNotRegisterVisibleIslands(): void
+    public function testRenderVueComponentVisibleIslandEmitsNoPreload(): void
     {
-        $this->buildResolver()->renderVueComponent('Vendor::Card', []);
+        $this->preloadFiles = ['Vendor/components/Card.js'];
 
-        $this->assertSame([], $this->eagerIslandRegistry->all());
+        $html = $this->buildResolver()->renderVueComponent('Vendor::Card', []);
+
+        $this->assertStringNotContainsString('<link', $html);
+    }
+
+    public function testEagerPreloadIsDeduplicatedAcrossIslandsInTheSameRequest(): void
+    {
+        // Two eager islands sharing a chunk (pinia) — emitted once across both.
+        $resolver = $this->buildResolver();
+
+        $this->preloadFiles = ['Vendor/components/Card.js', 'lib/pinia.js'];
+        $first = $resolver->renderVueComponent('Vendor::Card', [], true);
+
+        $this->preloadFiles = ['Vendor/components/Other.js', 'lib/pinia.js'];
+        $second = $resolver->renderVueComponent('Vendor::Other', [], true);
+
+        $combined = $first . $second;
+        $this->assertSame(
+            1,
+            substr_count($combined, '/static/vite_generated/lib/pinia.js'),
+            'shared dependency chunk must be hinted exactly once per request'
+        );
+        $this->assertStringContainsString('Vendor/components/Other.js', $second);
     }
 
     public function testGetIslandsRuntimeUrlResolvesTheBootstrapAsset(): void
