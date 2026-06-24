@@ -16,6 +16,7 @@ use Magento\Framework\View\Asset\Repository;
 use Magento\Framework\View\Element\Block\ArgumentInterface;
 use MageObsidian\ModernFrontend\Api\Data\ConfigInterface;
 use MageObsidian\ModernFrontend\Model\Config\ConfigProvider;
+use MageObsidian\ModernFrontend\Service\EagerIslandRegistry;
 use MageObsidian\ModernFrontend\Service\Vue\PropsEncoder;
 use RuntimeException;
 
@@ -40,12 +41,14 @@ class ViteResolver implements ArgumentInterface
      * @param RequestInterface $request
      * @param ConfigProvider $configProvider
      * @param LocaleResolver $localeResolver
+     * @param EagerIslandRegistry $eagerIslandRegistry
      */
     public function __construct(
         private readonly Repository $assetRepository,
         private readonly RequestInterface $request,
         private readonly ConfigProvider $configProvider,
-        private readonly LocaleResolver $localeResolver
+        private readonly LocaleResolver $localeResolver,
+        private readonly EagerIslandRegistry $eagerIslandRegistry
     ) {
     }
 
@@ -110,6 +113,23 @@ class ViteResolver implements ArgumentInterface
      */
     public function resolvePathByName(string $name, ?string $defaultStart = null): string
     {
+        return $this->getViteFileUrl($this->buildRelativePath($name, $defaultStart));
+    }
+
+    /**
+     * Build the build-output-relative path for a "Vendor::Path" name.
+     *
+     * This is the path before it is turned into a URL — i.e. the manifest `file`
+     * key for that asset.
+     *
+     * @param string $name Format: "Vendor::Path" or "Path".
+     * @param string|null $defaultStart Default start path if not specified in $name.
+     *
+     * @return string Path relative to the Vite generated folder, e.g. "Vendor/components/Card".
+     * @throws InvalidArgumentException If the name is empty.
+     */
+    private function buildRelativePath(string $name, ?string $defaultStart = null): string
+    {
         if (empty($name)) {
             throw new InvalidArgumentException('The component name cannot be empty.');
         }
@@ -122,7 +142,7 @@ class ViteResolver implements ArgumentInterface
             $path = "{$defaultStart}/{$path}";
         }
 
-        return $this->getViteFileUrl("{$vendor}/{$path}");
+        return "{$vendor}/{$path}";
     }
 
     /**
@@ -152,13 +172,20 @@ class ViteResolver implements ArgumentInterface
      */
     public function renderVueComponent(string $componentName, array $props = [], bool $eager = false): string
     {
-        $componentUrl = $this->resolvePathByName($componentName, ConfigInterface::VUE_COMPONENTS_PATH);
+        $relativePath = $this->buildRelativePath($componentName, ConfigInterface::VUE_COMPONENTS_PATH);
+        $componentUrl = $this->getViteFileUrl($relativePath);
 
         // Fails loudly instead of emitting a broken attribute when props are not
         // JSON-encodable.
         $propsAttr = PropsEncoder::encodeAttribute($componentName, $props);
         $componentAttr = htmlspecialchars($componentUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $strategy = $eager ? 'eager' : 'visible';
+
+        // Eager islands mount synchronously at bootstrap; record them so the
+        // bootstrap block can modulepreload their dependency chunks up front.
+        if ($eager) {
+            $this->eagerIslandRegistry->register($relativePath . '.js');
+        }
 
         return <<<HTML
             <div data-mage-island data-component="$componentAttr" data-props="$propsAttr" data-strategy="$strategy"></div>

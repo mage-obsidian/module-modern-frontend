@@ -8,6 +8,7 @@ use Magento\Framework\App\RequestInterface;
 use Magento\Framework\Locale\ResolverInterface as LocaleResolver;
 use Magento\Framework\View\Asset\Repository;
 use MageObsidian\ModernFrontend\Model\Config\ConfigProvider;
+use MageObsidian\ModernFrontend\Service\EagerIslandRegistry;
 use MageObsidian\ModernFrontend\ViewModel\ViteResolver;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -20,6 +21,13 @@ use RuntimeException;
  */
 class ViteResolverTest extends TestCase
 {
+    private EagerIslandRegistry $eagerIslandRegistry;
+
+    protected function setUp(): void
+    {
+        $this->eagerIslandRegistry = new EagerIslandRegistry();
+    }
+
     private function buildResolver(string $viteGeneratedPath = 'vite_generated'): ViteResolver
     {
         $repository = $this->createMock(Repository::class);
@@ -36,7 +44,7 @@ class ViteResolverTest extends TestCase
         $locale = $this->createMock(LocaleResolver::class);
         $locale->method('getLocale')->willReturn('en_US');
 
-        return new ViteResolver($repository, $request, $configProvider, $locale);
+        return new ViteResolver($repository, $request, $configProvider, $locale, $this->eagerIslandRegistry);
     }
 
     public function testGetViteFileUrlAppendsJsExtensionAndPrefixesGeneratedPath(): void
@@ -78,7 +86,8 @@ class ViteResolverTest extends TestCase
         $locale = $this->createMock(LocaleResolver::class);
         $locale->method('getLocale')->willReturn('en_US');
 
-        $url = (new ViteResolver($repository, $request, $configProvider, $locale))->getViteFileUrl('lib/vue');
+        $url = (new ViteResolver($repository, $request, $configProvider, $locale, $this->eagerIslandRegistry))
+            ->getViteFileUrl('lib/vue');
 
         $this->assertStringNotContainsString("\n", $url);
         $this->assertSame('/static/version123/vite_generated/lib/vue.js', $url);
@@ -130,6 +139,25 @@ class ViteResolverTest extends TestCase
         $html = $this->buildResolver()->renderVueComponent('Vendor::Card', [], true);
 
         $this->assertStringContainsString('data-strategy="eager"', $html);
+    }
+
+    public function testRenderVueComponentRegistersEagerIslandChunkForPreload(): void
+    {
+        $this->buildResolver()->renderVueComponent('Vendor::Card', [], true);
+
+        // The registered value is the manifest `file` key: the output-relative
+        // chunk path with the components prefix and a .js extension.
+        $this->assertSame(
+            ['Vendor/components/Card.js'],
+            $this->eagerIslandRegistry->all()
+        );
+    }
+
+    public function testRenderVueComponentDoesNotRegisterVisibleIslands(): void
+    {
+        $this->buildResolver()->renderVueComponent('Vendor::Card', []);
+
+        $this->assertSame([], $this->eagerIslandRegistry->all());
     }
 
     public function testGetIslandsRuntimeUrlResolvesTheBootstrapAsset(): void

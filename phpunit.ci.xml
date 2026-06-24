@@ -21,6 +21,7 @@
             <exclude>src/Test/Unit/Model/SchemaOrg/CurrentPageSchemaProviderTest.php</exclude>
             <exclude>src/Test/Unit/ViewModel/ImageTest.php</exclude>
             <exclude>src/Test/Unit/Block/I18nRuntimeTest.php</exclude>
+            <exclude>src/Test/Unit/Block/IslandsRuntimeTest.php</exclude>
             <exclude>src/Test/Unit/Block/SectionDataRuntimeTest.php</exclude>
             <exclude>src/Test/Unit/ViewModel/SectionDataConfigTest.php</exclude>
             <exclude>src/Test/Unit/Plugin/Deploy/Package/PackageFilePluginTest.php</exclude>
