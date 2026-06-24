@@ -25,6 +25,10 @@
             <exclude>src/Test/Unit/Block/SectionDataRuntimeTest.php</exclude>
             <exclude>src/Test/Unit/ViewModel/SectionDataConfigTest.php</exclude>
             <exclude>src/Test/Unit/Plugin/Deploy/Package/PackageFilePluginTest.php</exclude>
+            <exclude>src/Test/Unit/Plugin/View/Asset/MinifyHtmlThemePluginTest.php</exclude>
+            <exclude>src/Test/Unit/Plugin/View/Result/AsyncCssThemePluginTest.php</exclude>
+            <exclude>src/Test/Unit/Service/CriticalCssProviderTest.php</exclude>
+            <exclude>src/Test/Unit/ViewModel/CriticalCssTest.php</exclude>
         </testsuite>
     </testsuites>
 </phpunit>

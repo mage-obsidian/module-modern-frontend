@@ -19,4 +19,22 @@
             </argument>
         </arguments>
     </virtualType>
+    <type name="Magento\Framework\View\Asset\ConfigInterface">
+        <plugin name="mageObsidian_skipMinifyHtmlForObsidianThemes"
+                type="MageObsidian\ModernFrontend\Plugin\View\Asset\MinifyHtmlThemePlugin"/>
+    </type>
+    <type name="MageObsidian\ModernFrontend\Plugin\View\Asset\MinifyHtmlThemePlugin">
+        <arguments>
+            <argument name="design" xsi:type="object">Magento\Framework\View\DesignInterface\Proxy</argument>
+        </arguments>
+    </type>
+    <type name="Magento\Theme\Controller\Result\AsyncCssPlugin">
+        <plugin name="mageObsidian_skipAsyncCssForObsidianThemes"
+                type="MageObsidian\ModernFrontend\Plugin\View\Result\AsyncCssThemePlugin"/>
+    </type>
+    <type name="MageObsidian\ModernFrontend\Plugin\View\Result\AsyncCssThemePlugin">
+        <arguments>
+            <argument name="design" xsi:type="object">Magento\Framework\View\DesignInterface\Proxy</argument>
+        </arguments>
+    </type>
 </config>
