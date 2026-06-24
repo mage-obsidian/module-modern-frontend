@@ -54,7 +54,7 @@ class DevServerGuard extends AbstractBlock
                             + 'padding:10px 16px;text-align:center;box-shadow:0 -2px 8px rgba(0,0,0,.35)';
                         banner.innerHTML = 'MageObsidian — the Vite dev server is not responding, so your '
                             + 'changes will not be reflected. Start it '
-                            + '(<code>mage-obsidian:build-themes --dev-server</code>), run '
+                            + '(<code>bin/magento mage-obsidian:frontend:dev --up</code>), run '
                             + '<code>bin/magento mage-obsidian:frontend:doctor</code>, or disable HMR to use built assets.';
                         document.body.appendChild(banner);
                     });

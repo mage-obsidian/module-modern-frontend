@@ -13,7 +13,7 @@ class ModeAdvisorTest extends TestCase
         $messages = ModeAdvisor::messagesForMode(ModeAdvisor::MODE_DEVELOPER);
 
         $this->assertNotEmpty($messages);
-        $this->assertStringContainsString('--start', implode("\n", $messages));
+        $this->assertStringContainsString('mage-obsidian:frontend:dev --up', implode("\n", $messages));
     }
 
     public function testDefaultModeMentionsStaticAssets(): void

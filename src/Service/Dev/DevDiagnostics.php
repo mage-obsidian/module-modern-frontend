@@ -20,7 +20,7 @@ use MageObsidian\ModernFrontend\Service\Contract\ContractDiff;
  */
 class DevDiagnostics
 {
-    public const DEV_SERVER_HINT = 'Start the dev server: mage-obsidian:build-themes --theme <theme> --dev-server';
+    public const DEV_SERVER_HINT = 'Start it: bin/magento mage-obsidian:frontend:dev --up';
 
     /**
      * Extensions a config file may carry. The engine loads exactly one filename

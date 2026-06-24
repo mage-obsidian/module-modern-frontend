@@ -34,13 +34,13 @@ final class ModeAdvisor
         return match ($mode) {
             self::MODE_DEVELOPER => [
                 'MageObsidian: developer mode — HMR is available.',
-                'Start the Vite dev server: bin/magento mage-obsidian:frontend:dev --start --theme=<Vendor/theme>',
+                'Go live in one shot: bin/magento mage-obsidian:frontend:dev --up',
                 'Diagnose anytime: bin/magento mage-obsidian:frontend:doctor',
             ],
             self::MODE_DEFAULT => [
                 'MageObsidian: default mode serves built static assets; the Vite dev server is not used.',
                 'Ensure static content is deployed (the Vite build runs during setup:static-content:deploy).',
-                'If HMR is on, turn it off: bin/magento mage-obsidian:frontend:hmr --disable',
+                'Back to built assets in one shot: bin/magento mage-obsidian:frontend:dev --down',
             ],
             self::MODE_PRODUCTION => [
                 'MageObsidian: production mode regenerated static content, including the Vite bundle.',
