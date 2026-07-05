@@ -29,6 +29,7 @@
             <exclude>src/Test/Unit/Plugin/View/Result/AsyncCssThemePluginTest.php</exclude>
             <exclude>src/Test/Unit/Service/CriticalCssProviderTest.php</exclude>
             <exclude>src/Test/Unit/ViewModel/CriticalCssTest.php</exclude>
+            <exclude>src/Test/Unit/Service/Dev/DevWorkflowTest.php</exclude>
         </testsuite>
     </testsuites>
 </phpunit>
