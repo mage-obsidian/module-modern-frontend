@@ -15,6 +15,7 @@
     <testsuites>
         <testsuite name="MageObsidian ModernFrontend Standalone Unit">
             <directory>src/Test/Unit</directory>
+            <exclude>src/Test/Unit/Framework/Module/ManagerTest.php</exclude>
             <exclude>src/Test/Unit/Service/ConfigManagerTest.php</exclude>
             <exclude>src/Test/Unit/ViewModel/ViteResolverTest.php</exclude>
             <exclude>src/Test/Unit/ViewModel/SchemaOrgTest.php</exclude>

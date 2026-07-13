@@ -93,9 +93,15 @@ class Manager extends MagentoManager
         $moduleName
     ): bool {
         $result = parent::isOutputEnabled($moduleName);
-        if (!$this->isThemeEnabled()) {
-            return $result;
+        if (!$result) {
+            return false;
         }
-        return $result && $this->configManager->isModuleEnabled($moduleName);
+        $isObsidianModule = $this->configManager->isModuleEnabled($moduleName);
+        if ($this->isThemeEnabled()) {
+            return $isObsidianModule;
+        }
+        // Legacy theme: keep native modules and exclude Obsidian modules so
+        // their islands (and neutralization) never reach a non-Obsidian theme.
+        return !$isObsidianModule;
     }
 }
