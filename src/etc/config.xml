@@ -17,6 +17,9 @@
             <seo>
                 <structured_data_enabled>1</structured_data_enabled>
             </seo>
+            <checkout>
+                <layout_mode>stepped</layout_mode>
+            </checkout>
         </mage_obsidian>
     </default>
 </config>

@@ -28,6 +28,8 @@ class ConfigProvider implements ArgumentInterface
     public const string DEV_SERVER_ALLOWED_HOSTS = self::DEV_SERVER_PATH . 'allowed_hosts';
     public const string SEO_PATH = self::ROOT_PATH . 'seo/';
     public const string STRUCTURED_DATA_ENABLED = self::SEO_PATH . 'structured_data_enabled';
+    public const string CHECKOUT_PATH = self::ROOT_PATH . 'checkout/';
+    public const string CHECKOUT_LAYOUT_MODE = self::CHECKOUT_PATH . 'layout_mode';
 
     /**
      * @param ScopeConfigInterface $scopeConfig
@@ -63,6 +65,19 @@ class ConfigProvider implements ArgumentInterface
     public function isStructuredDataEnabled(): bool
     {
         return (bool)$this->scopeConfig->getValue(self::STRUCTURED_DATA_ENABLED, ScopeInterface::SCOPE_STORE);
+    }
+
+    /**
+     * Checkout layout mode: 'stepped' (the 4-step wizard) or 'onepage' (all
+     * sections on a single screen). Read at store scope so a merchant can choose
+     * per store view; defaults to the stepped wizard.
+     *
+     * @return string
+     */
+    public function getCheckoutLayoutMode(): string
+    {
+        $mode = (string)$this->scopeConfig->getValue(self::CHECKOUT_LAYOUT_MODE, ScopeInterface::SCOPE_STORE);
+        return $mode !== '' ? $mode : Source\CheckoutLayout::STEPPED;
     }
 
     /**
