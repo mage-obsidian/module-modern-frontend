@@ -32,6 +32,10 @@
         <plugin name="mageObsidian_skipAsyncCssForObsidianThemes"
                 type="MageObsidian\ModernFrontend\Plugin\View\Result\AsyncCssThemePlugin"/>
     </type>
+    <type name="Magento\Csp\Api\ModeConfigManagerInterface">
+        <plugin name="mageObsidian_forceReportOnlyCspInHmr"
+                type="MageObsidian\ModernFrontend\Plugin\Csp\ForceReportOnlyInHmr"/>
+    </type>
     <type name="MageObsidian\ModernFrontend\Plugin\View\Result\AsyncCssThemePlugin">
         <arguments>
             <argument name="design" xsi:type="object">Magento\Framework\View\DesignInterface\Proxy</argument>

@@ -28,6 +28,9 @@
             <exclude>src/Test/Unit/Plugin/Deploy/Package/PackageFilePluginTest.php</exclude>
             <exclude>src/Test/Unit/Plugin/View/Asset/MinifyHtmlThemePluginTest.php</exclude>
             <exclude>src/Test/Unit/Plugin/View/Result/AsyncCssThemePluginTest.php</exclude>
+            <exclude>src/Test/Unit/Plugin/Csp/ForceReportOnlyInHmrTest.php</exclude>
+            <exclude>src/Test/Unit/Model/Config/ConfigProviderTest.php</exclude>
+            <exclude>src/Test/Unit/Model/Config/Source/CheckoutLayoutTest.php</exclude>
             <exclude>src/Test/Unit/Service/CriticalCssProviderTest.php</exclude>
             <exclude>src/Test/Unit/ViewModel/CriticalCssTest.php</exclude>
             <exclude>src/Test/Unit/Service/Dev/DevWorkflowTest.php</exclude>
