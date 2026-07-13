@@ -49,7 +49,7 @@ class ThemeList implements ThemeListInterface
             }
             $this->enabled = [];
             foreach ($all as $themeName => $themeConfig) {
-                $isEnabled = (boolean)$themeConfig['data']['features']['compatibility'];
+                $isEnabled = filter_var($themeConfig['data']['features']['compatibility'], FILTER_VALIDATE_BOOLEAN);
                 if ($isEnabled) {
                     $this->enabled[$themeName] = $themeConfig;
                 }

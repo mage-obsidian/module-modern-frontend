@@ -50,7 +50,7 @@ class ModuleList implements ModuleListInterface
             }
             $this->enabled = [];
             foreach ($all as $moduleName => $moduleConfig) {
-                $isEnabled = (boolean)$moduleConfig['data']['features']['compatibility'];
+                $isEnabled = filter_var($moduleConfig['data']['features']['compatibility'], FILTER_VALIDATE_BOOLEAN);
                 if ($isEnabled) {
                     $this->enabled[$moduleName] = $moduleConfig;
                 }
