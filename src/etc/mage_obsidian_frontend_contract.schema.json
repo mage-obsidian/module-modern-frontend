@@ -37,7 +37,8 @@
                 "additionalProperties": false,
                 "required": ["src"],
                 "properties": {
-                    "src": { "type": "string" }
+                    "src": { "type": "string" },
+                    "universal": { "type": "boolean" }
                 }
             }
         },

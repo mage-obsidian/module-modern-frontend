@@ -85,7 +85,7 @@ class ConfigManager implements ConfigManagerInterface
         $enabledModules = $this->moduleList->getAllEnabled();
         $enabledThemes = $this->themeList->getAllEnabled();
 
-        $configModules = array_map(fn($module) => ['src' => $module['path']], $enabledModules);
+        $configModules = array_map(fn($module) => $this->buildModuleEntry($module), $enabledModules);
 
         $configThemes = array_map(fn($theme) => [
             'src' => $theme['path'],
@@ -207,6 +207,41 @@ class ConfigManager implements ConfigManagerInterface
     }
 
     /**
+     * Whether the named module opts into every theme via the <universal> flag.
+     *
+     * @param string $moduleName
+     *
+     * @return bool
+     * @throws FileSystemException
+     * @throws LocalizedException
+     */
+    public function isModuleUniversal(string $moduleName): bool
+    {
+        $this->get();
+        return !empty($this->configData['modules'][$moduleName]['universal']);
+    }
+
+    /**
+     * Build a contract entry for one enabled module. Shared by generate() and
+     * detectDrift() so the on-disk shape and the expected shape never diverge
+     * (a divergence would make detectDrift report phantom "changed" modules).
+     *
+     * @param array $module
+     *
+     * @return array
+     */
+    private function buildModuleEntry(array $module): array
+    {
+        $entry = ['src' => $module['path']];
+        // The XML leaf arrives as the string 'false'/'true'; (bool)'false' is
+        // true, so validate the boolean instead of casting.
+        if (filter_var($module['data']['features']['universal'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+            $entry['universal'] = true;
+        }
+        return $entry;
+    }
+
+    /**
      * Diff the on-disk contract against the contract recomputed from the current
      * enabled modules/themes.
      *
@@ -222,7 +257,7 @@ class ConfigManager implements ConfigManagerInterface
         $current = $this->get();
 
         $expectedModules = array_map(
-            static fn(array $module): array => ['src' => $module['path']],
+            fn(array $module): array => $this->buildModuleEntry($module),
             $this->moduleList->getAllEnabled()
         );
         $expectedThemes = array_map(

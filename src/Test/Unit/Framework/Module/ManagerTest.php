@@ -12,9 +12,10 @@ use Magento\Framework\View\DesignInterface;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Covers the layout-file gating in isOutputEnabled() across the theme×module
- * matrix. Mocks the Magento framework collaborators, so it needs the framework
- * autoloader (runs in a Magento root, not the standalone CI suite).
+ * Covers the layout-file gating in isOutputEnabled(): the theme×module matrix
+ * plus the <universal> opt-in. Mocks the Magento framework collaborators, so it
+ * needs the framework autoloader (runs in a Magento root, not the standalone CI
+ * suite).
  */
 class ManagerTest extends TestCase
 {
@@ -39,6 +40,12 @@ class ManagerTest extends TestCase
         $this->assertFalse($manager->isOutputEnabled(self::MODULE));
     }
 
+    public function testLegacyThemeKeepsUniversalContractModule(): void
+    {
+        $manager = $this->makeManager(themeEnabled: false, moduleInContract: true, universal: true);
+        $this->assertTrue($manager->isOutputEnabled(self::MODULE));
+    }
+
     public function testLegacyThemeKeepsNativeModule(): void
     {
         $manager = $this->makeManager(themeEnabled: false, moduleInContract: false);
@@ -52,17 +59,22 @@ class ManagerTest extends TestCase
         $configManager = $this->createMock(ConfigManagerInterface::class);
         $configManager->method('isThemeEnabled')->willReturn(true);
         $configManager->expects($this->never())->method('isModuleEnabled');
+        $configManager->expects($this->never())->method('isModuleUniversal');
 
         $manager = $this->buildManager($configManager, nativeHas: false);
 
         $this->assertFalse($manager->isOutputEnabled(self::MODULE));
     }
 
-    private function makeManager(bool $themeEnabled, bool $moduleInContract = false): Manager
-    {
+    private function makeManager(
+        bool $themeEnabled,
+        bool $moduleInContract = false,
+        bool $universal = false
+    ): Manager {
         $configManager = $this->createMock(ConfigManagerInterface::class);
         $configManager->method('isThemeEnabled')->willReturn($themeEnabled);
         $configManager->method('isModuleEnabled')->willReturn($moduleInContract);
+        $configManager->method('isModuleUniversal')->willReturn($universal);
 
         return $this->buildManager($configManager);
     }

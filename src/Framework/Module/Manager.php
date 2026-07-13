@@ -101,7 +101,8 @@ class Manager extends MagentoManager
             return $isObsidianModule;
         }
         // Legacy theme: keep native modules and exclude Obsidian modules so
-        // their islands (and neutralization) never reach a non-Obsidian theme.
-        return !$isObsidianModule;
+        // their islands (and neutralization) never reach a non-Obsidian theme,
+        // unless the module opts into every theme via <universal>.
+        return !$isObsidianModule || $this->configManager->isModuleUniversal($moduleName);
     }
 }

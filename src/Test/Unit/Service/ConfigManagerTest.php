@@ -89,6 +89,70 @@ class ConfigManagerTest extends TestCase
         $this->assertFalse($manager->isThemeEnabled('Vendor/missing'));
     }
 
+    public function testGenerateEmitsUniversalFlagForOptedInModules(): void
+    {
+        $manager = $this->buildManager(
+            modules: [
+                'Vendor_Plain' => ['path' => '/src/Vendor/Plain'],
+                'Vendor_Universal' => [
+                    'path' => '/src/Vendor/Universal',
+                    'data' => ['features' => ['universal' => 'true']],
+                ],
+                // The XML leaf is a string; 'false' must NOT flip the flag
+                // (guards the (bool)'false' === true trap).
+                'Vendor_ExplicitFalse' => [
+                    'path' => '/src/Vendor/ExplicitFalse',
+                    'data' => ['features' => ['universal' => 'false']],
+                ],
+            ],
+            themes: [],
+            allModules: ['Vendor_Plain', 'Vendor_Universal', 'Vendor_ExplicitFalse'],
+            mode: 'developer'
+        );
+
+        // No throw means the payload (with the optional universal field) still
+        // validated against the real schema.
+        $manager->generate();
+
+        $json = json_decode($this->writes[self::JSON_TMP], true);
+        $this->assertSame(['src' => '/src/Vendor/Plain'], $json['modules']['Vendor_Plain']);
+        $this->assertSame(
+            ['src' => '/src/Vendor/Universal', 'universal' => true],
+            $json['modules']['Vendor_Universal']
+        );
+        $this->assertSame(['src' => '/src/Vendor/ExplicitFalse'], $json['modules']['Vendor_ExplicitFalse']);
+
+        $this->assertTrue($manager->isModuleUniversal('Vendor_Universal'));
+        $this->assertFalse($manager->isModuleUniversal('Vendor_Plain'));
+        $this->assertFalse($manager->isModuleUniversal('Vendor_ExplicitFalse'));
+        $this->assertFalse($manager->isModuleUniversal('Nonexistent_Mod'));
+    }
+
+    public function testDetectDriftIgnoresUniversalOnlyMatch(): void
+    {
+        // generate() and detectDrift() must build module entries identically;
+        // a universal module present in both must not surface as "changed".
+        $modules = [
+            'Vendor_Universal' => [
+                'path' => '/src/Vendor/Universal',
+                'data' => ['features' => ['universal' => 'true']],
+            ],
+        ];
+        $moduleList = $this->createMock(ModuleListInterface::class);
+        $moduleList->method('getAllEnabled')->willReturn($modules);
+        $themeList = $this->createMock(ThemeListInterface::class);
+        $themeList->method('getAllEnabled')->willReturn([]);
+
+        $manager = $this->buildManagerWith($moduleList, $themeList, ['Vendor_Universal'], 'developer');
+        $manager->generate();
+
+        $drift = $manager->detectDrift();
+
+        $this->assertSame([], $drift['modules']['added']);
+        $this->assertSame([], $drift['modules']['removed']);
+        $this->assertSame([], $drift['modules']['changed']);
+    }
+
     public function testDetectDriftReportsModulesAddedSinceGeneration(): void
     {
         // getAllEnabled is called once by generate() and again by detectDrift();

@@ -63,6 +63,17 @@ interface ConfigManagerInterface
     public function isThemeEnabled(string $themeName): bool;
 
     /**
+     * Whether the named module opts into every theme (its layout is collected
+     * even under non-Obsidian themes), via the <universal> compatibility flag.
+     *
+     * @param string $moduleName
+     * @return bool
+     * @throws FileSystemException
+     * @throws LocalizedException
+     */
+    public function isModuleUniversal(string $moduleName): bool;
+
+    /**
      * Whether both contract files exist on disk.
      *
      * @return bool
