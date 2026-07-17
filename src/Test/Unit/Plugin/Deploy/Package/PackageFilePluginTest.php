@@ -126,4 +126,79 @@ class PackageFilePluginTest extends TestCase
         $this->assertSame('kept', $this->plugin($configManager)->aroundSetPackage($file, $proceed, $package));
         $this->assertTrue($called);
     }
+
+    /**
+     * The reported bug: a non-MageObsidian module's runtime static asset
+     * (svg/image/font, not imported by Vite) must still be materialized for an
+     * enabled MageObsidian theme, exactly as it is for legacy themes.
+     */
+    public function testKeepsThirdPartyModuleStaticAssetUnderEnabledTheme(): void
+    {
+        $configManager = $this->createMock(ConfigManagerInterface::class);
+        $configManager->method('isModuleEnabled')->with('Magento_Catalog')->willReturn(false);
+        $configManager->method('isThemeEnabled')->with('MageObsidian/default')->willReturn(true);
+
+        $file = $this->file(
+            'Magento_Catalog',
+            '',
+            '/abs/magento/Catalog/view/frontend/web/svg/parts/default/foo.svg'
+        );
+        $package = $this->package('MageObsidian/default');
+
+        $called = false;
+        $proceed = function () use (&$called) {
+            $called = true;
+            return 'kept';
+        };
+
+        $this->assertSame('kept', $this->plugin($configManager)->aroundSetPackage($file, $proceed, $package));
+        $this->assertTrue($called);
+    }
+
+    /**
+     * Intentional: a third-party module's legacy JS has nowhere to be wired on
+     * an enabled MageObsidian theme (no RequireJS pipeline), so it stays out.
+     */
+    public function testExcludesThirdPartyModuleJsUnderEnabledTheme(): void
+    {
+        $configManager = $this->createMock(ConfigManagerInterface::class);
+        $configManager->method('isModuleEnabled')->with('Magento_Catalog')->willReturn(false);
+        $configManager->method('isThemeEnabled')->with('MageObsidian/default')->willReturn(true);
+
+        $file = $this->file('Magento_Catalog', '', '/abs/magento/Catalog/view/frontend/web/js/foo.js');
+        $package = $this->package('MageObsidian/default');
+
+        $proceed = function () {
+            $this->fail('proceed() must not be called for an excluded file');
+        };
+
+        $this->assertNull($this->plugin($configManager)->aroundSetPackage($file, $proceed, $package));
+    }
+
+    /**
+     * An enabled MageObsidian module's own static asset also deploys under an
+     * enabled MageObsidian theme (documents the scenario from the bug report).
+     */
+    public function testKeepsObsidianModuleStaticAssetUnderEnabledTheme(): void
+    {
+        $configManager = $this->createMock(ConfigManagerInterface::class);
+        $configManager->method('isModuleEnabled')->with('MageObsidian_Catalog')->willReturn(true);
+        $configManager->method('isThemeEnabled')->with('MageObsidian/default')->willReturn(true);
+
+        $file = $this->file(
+            'MageObsidian_Catalog',
+            '',
+            '/abs/module-catalog/src/view/frontend/web/svg/icon.svg'
+        );
+        $package = $this->package('MageObsidian/default');
+
+        $called = false;
+        $proceed = function () use (&$called) {
+            $called = true;
+            return 'kept';
+        };
+
+        $this->assertSame('kept', $this->plugin($configManager)->aroundSetPackage($file, $proceed, $package));
+        $this->assertTrue($called);
+    }
 }

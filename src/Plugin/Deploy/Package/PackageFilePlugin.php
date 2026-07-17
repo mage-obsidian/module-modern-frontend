@@ -93,10 +93,6 @@ readonly class PackageFilePlugin
             return false;
         }
 
-        if (!$hasTheme && !$this->configManager->isModuleEnabled($module)) {
-            return false;
-        }
-
         return $this->filterSourceFiles($file);
     }
 
