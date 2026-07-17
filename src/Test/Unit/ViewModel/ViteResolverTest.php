@@ -162,6 +162,30 @@ class ViteResolverTest extends TestCase
         $this->assertStringContainsString('data-strategy="eager"', $html);
     }
 
+    public function testRenderVueComponentMarkerIsEmptyWithoutPlaceholder(): void
+    {
+        $html = $this->buildResolver()->renderVueComponent('Vendor::Card', [], true);
+
+        $this->assertStringContainsString('data-strategy="eager"></div>', $html);
+    }
+
+    public function testRenderVueComponentEmitsPlaceholderInsideMarker(): void
+    {
+        $html = $this->buildResolver()->renderVueComponent(
+            'Vendor::Card',
+            [],
+            true,
+            '<span class="skeleton">icon</span>'
+        );
+
+        // The placeholder is server-rendered inside the marker so the slot is not
+        // an empty box before hydration; Vue clears it on mount.
+        $this->assertStringContainsString(
+            'data-strategy="eager"><span class="skeleton">icon</span></div>',
+            $html
+        );
+    }
+
     public function testRenderVueComponentEmitsModulePreloadForEagerIslandBeforeTheMarker(): void
     {
         // The manifest closure for this island (component chunk + shared deps).

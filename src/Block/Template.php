@@ -111,12 +111,17 @@ class Template extends MagentoTemplate
      * @param string $componentName Component name in the format "Vendor::Component".
      * @param array $props Properties to pass to the Vue component.
      * @param bool $eager Mount immediately instead of on viewport entry.
+     * @param string $placeholder Server-rendered markup shown until hydration.
      *
      * @return string The island marker markup.
      */
-    public function renderVueComponent(string $componentName, array $props = [], bool $eager = false): string
-    {
-        return $this->viteResolver->renderVueComponent($componentName, $props, $eager);
+    public function renderVueComponent(
+        string $componentName,
+        array $props = [],
+        bool $eager = false,
+        string $placeholder = ''
+    ): string {
+        return $this->viteResolver->renderVueComponent($componentName, $props, $eager, $placeholder);
     }
 
     /**

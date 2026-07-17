@@ -173,8 +173,12 @@ class ViteResolver implements ArgumentInterface
      *
      * @return string The island marker markup.
      */
-    public function renderVueComponent(string $componentName, array $props = [], bool $eager = false): string
-    {
+    public function renderVueComponent(
+        string $componentName,
+        array $props = [],
+        bool $eager = false,
+        string $placeholder = ''
+    ): string {
         $relativePath = $this->buildRelativePath($componentName, ConfigInterface::VUE_COMPONENTS_PATH);
         $componentUrl = $this->getViteFileUrl($relativePath);
 
@@ -192,8 +196,11 @@ class ViteResolver implements ArgumentInterface
         // the bootstrap block too — e.g. body-end drawers/toasts.
         $preload = $eager ? $this->renderEagerPreload($relativePath . '.js') : '';
 
+        // Server-rendered placeholder sits inside the marker so the slot is not an
+        // empty zero-size box before hydration; Vue clears the container on mount
+        // (runtime-dom sets innerHTML = '') and swaps in the real component.
         return $preload . <<<HTML
-            <div data-mage-island data-component="$componentAttr" data-props="$propsAttr" data-strategy="$strategy"></div>
+            <div data-mage-island data-component="$componentAttr" data-props="$propsAttr" data-strategy="$strategy">$placeholder</div>
             HTML;
     }
 
