@@ -5,6 +5,7 @@ namespace MageObsidian\ModernFrontend\Test\Unit\Service;
 
 use Magento\Framework\Filesystem\Driver\File;
 use Magento\Framework\View\Asset\File as AssetFile;
+use Magento\Framework\View\Asset\File\NotFoundException;
 use Magento\Framework\View\Asset\Repository;
 use MageObsidian\ModernFrontend\Model\Config\ConfigProvider;
 use MageObsidian\ModernFrontend\Service\CriticalCssProvider;
@@ -63,6 +64,27 @@ class CriticalCssProviderTest extends TestCase
         $provider = $this->buildProvider($assetRepository, $this->configProvider(false), $fileDriver);
 
         $this->assertSame('', $provider->getCriticalCss('cms_index_index'));
+    }
+
+    public function testStaysSilentWhenNoCriticalWasBuiltForHandle(): void
+    {
+        $asset = $this->createMock(AssetFile::class);
+        $asset->method('getSourceFile')->willThrowException(
+            new NotFoundException("Unable to resolve the source file for 'generated/critical/x.css'")
+        );
+        $assetRepository = $this->createMock(Repository::class);
+        $assetRepository->method('createAsset')->willReturn($asset);
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->never())->method('warning');
+
+        $provider = $this->buildProvider(
+            $assetRepository,
+            $this->configProvider(false),
+            $this->createMock(File::class),
+            $logger
+        );
+
+        $this->assertSame('', $provider->getCriticalCss('catalog_category_view'));
     }
 
     public function testDegradesAndLogsOnFailure(): void

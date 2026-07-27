@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace MageObsidian\ModernFrontend\Service;
 
 use Magento\Framework\Filesystem\Driver\File;
+use Magento\Framework\View\Asset\File\NotFoundException;
 use Magento\Framework\View\Asset\Repository;
 use MageObsidian\ModernFrontend\Model\Config\ConfigProvider;
 use Psr\Log\LoggerInterface;
@@ -69,6 +70,8 @@ class CriticalCssProvider
             }
 
             return (string)$this->fileDriver->fileGetContents($source);
+        } catch (NotFoundException) {
+            return '';
         } catch (Throwable $e) {
             $this->logger->warning(
                 'MageObsidian: could not read critical CSS for handle "' . $handle . '": ' . $e->getMessage()
