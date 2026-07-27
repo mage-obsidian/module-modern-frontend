@@ -158,4 +158,111 @@ class DevDiagnosticsTest extends TestCase
         $this->assertStringContainsString('module.config.cjs', $r->message);
         $this->assertStringContainsString('module.config.ts', $r->hint);
     }
+
+    public function testResolvePageCacheIdentifierFallsBackToThePreference(): void
+    {
+        $this->assertSame(
+            'Magento\PageCache\Model\App\Request\Http\IdentifierForSave',
+            $this->diagnostics->resolvePageCacheIdentifier([
+                'preferences' => [
+                    DevDiagnostics::PAGE_CACHE_IDENTIFIER_INTERFACE =>
+                        'Magento\PageCache\Model\App\Request\Http\IdentifierForSave',
+                ],
+            ])
+        );
+    }
+
+    /**
+     * @dataProvider kernelArgumentShapes
+     */
+    public function testResolvePageCacheIdentifierPrefersTheKernelArgument(array $identifierArgument): void
+    {
+        $resolved = $this->diagnostics->resolvePageCacheIdentifier([
+            'preferences' => [
+                DevDiagnostics::PAGE_CACHE_IDENTIFIER_INTERFACE =>
+                    'Magento\PageCache\Model\App\Request\Http\IdentifierForSave',
+            ],
+            'arguments' => [
+                DevDiagnostics::PAGE_CACHE_KERNEL => ['identifier' => $identifierArgument],
+            ],
+        ]);
+
+        $this->assertSame(DevDiagnostics::VARY_AWARE_IDENTIFIER, $resolved);
+    }
+
+    /**
+     * The compiled DI config packs object arguments as `_i_` and points at the
+     * generated Interceptor; the uncompiled reader emits `instance`.
+     */
+    public static function kernelArgumentShapes(): array
+    {
+        return [
+            'compiled, intercepted' => [['_i_' => DevDiagnostics::VARY_AWARE_IDENTIFIER . '\Interceptor']],
+            'compiled, plain' => [['_i_' => DevDiagnostics::VARY_AWARE_IDENTIFIER]],
+            'uncompiled' => [['instance' => '\\' . DevDiagnostics::VARY_AWARE_IDENTIFIER]],
+        ];
+    }
+
+    public function testResolvePageCacheIdentifierIgnoresANonInstanceArgument(): void
+    {
+        $resolved = $this->diagnostics->resolvePageCacheIdentifier([
+            'preferences' => [
+                DevDiagnostics::PAGE_CACHE_IDENTIFIER_INTERFACE =>
+                    'Magento\PageCache\Model\App\Request\Http\IdentifierForSave',
+            ],
+            'arguments' => [
+                DevDiagnostics::PAGE_CACHE_KERNEL => ['identifier' => ['_vn_' => true]],
+            ],
+        ]);
+
+        $this->assertSame('Magento\PageCache\Model\App\Request\Http\IdentifierForSave', $resolved);
+    }
+
+    public function testResolvePageCacheIdentifierReturnsEmptyWhenUnknown(): void
+    {
+        $this->assertSame('', $this->diagnostics->resolvePageCacheIdentifier([]));
+    }
+
+    public function testPageCacheVaryIsOkUnderVarnish(): void
+    {
+        $r = $this->diagnostics->evaluatePageCacheVary(true, 'Anything\At\All', ['currency']);
+        $this->assertTrue($r->isOk());
+        $this->assertStringContainsString('Varnish', $r->message);
+    }
+
+    public function testPageCacheVaryIsOkWhenTheIdentifierReadsTheCookie(): void
+    {
+        $r = $this->diagnostics->evaluatePageCacheVary(
+            false,
+            DevDiagnostics::VARY_AWARE_IDENTIFIER,
+            ['currency']
+        );
+        $this->assertTrue($r->isOk());
+    }
+
+    public function testPageCacheVaryWarnsWhenNothingVariesYet(): void
+    {
+        $r = $this->diagnostics->evaluatePageCacheVary(
+            false,
+            'Magento\PageCache\Model\App\Request\Http\IdentifierForSave',
+            []
+        );
+
+        $this->assertSame(CheckResult::STATUS_WARN, $r->status);
+        $this->assertStringContainsString(DevDiagnostics::PAGE_CACHE_VARY_ISSUE_URL, $r->hint);
+    }
+
+    public function testPageCacheVaryErrorsWhenADimensionVaries(): void
+    {
+        $r = $this->diagnostics->evaluatePageCacheVary(
+            false,
+            'Magento\PageCache\Model\App\Request\Http\IdentifierForSave',
+            ['currency']
+        );
+
+        $this->assertSame(CheckResult::STATUS_ERROR, $r->status);
+        $this->assertStringContainsString('currency', $r->message);
+        $this->assertStringContainsString(DevDiagnostics::VARY_AWARE_IDENTIFIER, $r->hint);
+        $this->assertStringContainsString(DevDiagnostics::PAGE_CACHE_VARY_ISSUE_URL, $r->hint);
+    }
 }

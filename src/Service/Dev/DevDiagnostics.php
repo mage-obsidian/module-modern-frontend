@@ -29,6 +29,19 @@ class DevDiagnostics
      */
     public const CONFIG_SHADOW_EXTENSIONS = ['js', 'cjs', 'mjs', 'ts'];
 
+    /**
+     * The page-cache identifier that builds the lookup key from the
+     * X-Magento-Vary cookie. Kept as a literal so this class stays free of
+     * Magento imports.
+     */
+    public const VARY_AWARE_IDENTIFIER = 'Magento\Framework\App\PageCache\Identifier';
+
+    public const PAGE_CACHE_KERNEL = 'Magento\Framework\App\PageCache\Kernel';
+
+    public const PAGE_CACHE_IDENTIFIER_INTERFACE = 'Magento\Framework\App\PageCache\IdentifierInterface';
+
+    public const PAGE_CACHE_VARY_ISSUE_URL = 'https://github.com/magento/magento2/issues/40474';
+
     public function evaluateMode(string $mode): CheckResult
     {
         return CheckResult::ok('App mode', sprintf('Current mode: %s.', $mode));
@@ -188,6 +201,78 @@ class DevDiagnostics
                 implode(', ', $shadowed)
             ),
             'Rename each to module.config.ts / theme.config.js (or delete it) so the engine stops skipping it.'
+        );
+    }
+
+    /**
+     * Class the built-in page cache uses to build the *lookup* key. A
+     * Kernel-level `identifier` argument wins over the interface preference,
+     * so an install that already applied the workaround reads as healthy.
+     *
+     * @param array<string, mixed> $frontendDiConfig Merged DI config of the frontend area.
+     */
+    public function resolvePageCacheIdentifier(array $frontendDiConfig): string
+    {
+        // Compiled DI packs an object argument as `_i_`; the uncompiled reader
+        // emits `instance`. Either form resolves to an Interceptor subclass when
+        // the target carries plugins, which the caller does not care about.
+        $argument = $frontendDiConfig['arguments'][self::PAGE_CACHE_KERNEL]['identifier'] ?? null;
+        $instance = is_array($argument) ? ($argument['_i_'] ?? $argument['instance'] ?? null) : null;
+
+        if (!is_string($instance) || $instance === '') {
+            $instance = $frontendDiConfig['preferences'][self::PAGE_CACHE_IDENTIFIER_INTERFACE] ?? null;
+        }
+        if (!is_string($instance)) {
+            return '';
+        }
+
+        return preg_replace('/\\\\Interceptor$/', '', ltrim($instance, '\\')) ?? '';
+    }
+
+    /**
+     * Magento 2.4.7 decoupled the page-cache identifiers and left the lookup one
+     * resolving to IdentifierForSave, which derives the key from an HTTP context
+     * that is still empty when the cache is read. The X-Magento-Vary cookie is
+     * therefore ignored and every visitor is served the first cached variant.
+     * Varnish is unaffected: its VCL hashes the cookie itself.
+     *
+     * @param string[] $varyingDimensions Context dimensions that actually differ in this install.
+     */
+    public function evaluatePageCacheVary(
+        bool $varnishEnabled,
+        string $identifierClass,
+        array $varyingDimensions
+    ): CheckResult {
+        if ($varnishEnabled) {
+            return CheckResult::ok('Page cache vary', 'Varnish hashes X-Magento-Vary in its own VCL.');
+        }
+        if ($identifierClass === self::VARY_AWARE_IDENTIFIER) {
+            return CheckResult::ok('Page cache vary', 'Built-in cache key honours X-Magento-Vary.');
+        }
+
+        $hint = sprintf(
+            'Switch to Varnish, or give %s an "identifier" argument of %s. See %s.',
+            self::PAGE_CACHE_KERNEL,
+            self::VARY_AWARE_IDENTIFIER,
+            self::PAGE_CACHE_VARY_ISSUE_URL
+        );
+
+        if ($varyingDimensions === []) {
+            return CheckResult::warn(
+                'Page cache vary',
+                'Built-in cache key ignores the X-Magento-Vary cookie, but no context dimension varies yet.',
+                $hint
+            );
+        }
+
+        return CheckResult::error(
+            'Page cache vary',
+            sprintf(
+                'Built-in cache key ignores the X-Magento-Vary cookie, so every visitor gets the first cached '
+                . 'variant (varying: %s).',
+                implode(', ', $varyingDimensions)
+            ),
+            $hint
         );
     }
 
