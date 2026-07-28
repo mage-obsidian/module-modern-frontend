@@ -9,9 +9,24 @@
  * (`mage-obsidian/runtime/islands.ts`); here we provide the concrete browser
  * side effects: dynamic component import, app creation, plugin wiring, and
  * viewport observation for the default "visible" (lazy) strategy.
+ *
+ * A marker carrying the component's initial state is adopted with `createSSRApp`;
+ * one whose contents are a placeholder is cleared and mounted with `createApp`.
+ * `createSSRApp` would also fall back to a full mount on an empty container, but
+ * warns each time it does, which buries the warnings that matter.
  */
 import type { App } from 'vue';
 import { hydrateAll } from 'mage-obsidian/runtime/islands.ts';
+import { diffHydration, formatMismatch } from 'mage-obsidian/runtime/hydrationDiff.ts';
+
+// Values the server cannot predict (a generated id, a locale-formatted number)
+// are exempted with Vue's own attribute, so they are cut from both sides rather
+// than reported every page load.
+const ALLOWED_MISMATCH = '[data-allow-mismatch]';
+
+// Defined by the Vite config. Not `import.meta.env.DEV`: `vite build` always runs
+// in production mode, so that one is false even on a developer-mode storefront.
+declare const __MAGE_OBSIDIAN_DEV__: boolean;
 
 function observeOnce(element: HTMLElement, onVisible: () => void): void {
     const observer = new IntersectionObserver((entries) => {
@@ -25,13 +40,68 @@ function observeOnce(element: HTMLElement, onVisible: () => void): void {
     observer.observe(element);
 }
 
+function islandName(marker: HTMLElement): string {
+    const source = marker.dataset.component ?? '(unknown)';
+    const path = source.split('/generated/')[1]?.replace(/\.js(\?.*)?$/, '');
+    if (!path) {
+        return source;
+    }
+    const [vendor, ...rest] = path.split('/');
+    return `${vendor}::${rest.filter((part) => part !== 'components').join('/')}`;
+}
+
+interface IslandSnapshot {
+    /** Only for a hydration target: the markup Vue is expected to adopt as-is. */
+    markup: string | null;
+    height: number;
+}
+
+function comparableMarkup(element: HTMLElement): string {
+    const clone = element.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll(ALLOWED_MISMATCH).forEach((node) => node.remove());
+    return clone.innerHTML;
+}
+
+function takeSnapshot(element: HTMLElement): IslandSnapshot {
+    return {
+        markup: element.dataset.hydrate ? comparableMarkup(element) : null,
+        height: element.offsetHeight,
+    };
+}
+
+// Two distinct failures, reported apart because they have different fixes: a
+// hydration that did not match (the template drifted from the component) and an
+// island that resized after the page painted (the shift this all exists to
+// prevent). Size is the honest test — an empty container that occupies no space,
+// like a drawer or a toast host, moves nothing and is not a defect.
+function inspect(element: HTMLElement, snapshot: unknown): void {
+    const before = snapshot as IslandSnapshot;
+
+    if (before.markup !== null) {
+        const mismatch = diffHydration(before.markup, comparableMarkup(element));
+        if (mismatch) {
+            console.error(formatMismatch(mismatch, islandName(element)), element);
+        }
+    }
+
+    const height = element.offsetHeight;
+    if (element.dataset.strategy === 'eager' && height !== before.height) {
+        console.warn(
+            `[MageObsidian] Island "${islandName(element)}" resized on mount ` +
+                `(${before.height}px → ${height}px), shifting everything below it. Render its ` +
+                'initial state server-side and hydrate — see docs 0105 "Vue Islands".',
+            element,
+        );
+    }
+}
+
 async function start(): Promise<void> {
     const markers = document.querySelectorAll<HTMLElement>('[data-mage-island]');
     if (markers.length === 0) {
         return;
     }
 
-    const [{ createApp }, { default: obsidianI18n }] = await Promise.all([
+    const [{ createApp, createSSRApp }, { default: obsidianI18n }] = await Promise.all([
         import('vue'),
         import('MageObsidian_ModernFrontend::js/i18n'),
     ]);
@@ -40,7 +110,13 @@ async function start(): Promise<void> {
         // The component URL is only known at runtime (PHP resolves it per island),
         // so this is an intentionally un-analyzable dynamic import.
         importComponent: (source: string) => import(/* @vite-ignore */ source),
-        createApp,
+        createApp: (component: unknown, props: Record<string, unknown>, hydrate: boolean) =>
+            (hydrate ? createSSRApp : createApp)(component as Parameters<typeof createApp>[0], props),
+        clearContainer: (element: HTMLElement) => {
+            element.innerHTML = '';
+        },
+        snapshot: __MAGE_OBSIDIAN_DEV__ ? takeSnapshot : undefined,
+        onMounted: __MAGE_OBSIDIAN_DEV__ ? inspect : undefined,
         // The engine's minimal `AppLike` only declares `mount`; the real object
         // is a full Vue app, so widen the param to call `use` for plugin wiring.
         configureApp: (app: App) => {
