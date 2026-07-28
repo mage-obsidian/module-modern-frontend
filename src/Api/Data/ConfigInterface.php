@@ -38,4 +38,15 @@ interface ConfigInterface
     public const string THEME_CSS_SOURCE_FILE = 'theme.source.css';
     public const string THEME_FILES_PATH = 'Theme';
     public const string LIB_PATH = 'lib';
+
+    /**
+     * Where CMS content is exported so Tailwind can scan it, relative to `var/`.
+     *
+     * Not part of the generated contract — like GENERATED_PATH, it is a fixed
+     * layout both sides agree on, mirrored by CMS_CONTENT_DIR in the engine's
+     * config/default.ts. Nothing configures it, so putting it on the wire would
+     * only add a schema version to keep in step.
+     */
+    public const string CMS_CONTENT_PATH = 'mage-obsidian/cms';
+    public const string CMS_CANDIDATES_FILE = 'candidates.json';
 }
