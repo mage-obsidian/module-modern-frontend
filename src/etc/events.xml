@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <event name="cms_page_save_after">
+        <observer name="mage_obsidian_cms_delta_page_save"
+                  instance="MageObsidian\ModernFrontend\Observer\Cms\RegenerateDelta"/>
+    </event>
+    <event name="cms_block_save_after">
+        <observer name="mage_obsidian_cms_delta_block_save"
+                  instance="MageObsidian\ModernFrontend\Observer\Cms\RegenerateDelta"/>
+    </event>
+    <event name="cms_page_delete_after">
+        <observer name="mage_obsidian_cms_delta_page_delete"
+                  instance="MageObsidian\ModernFrontend\Observer\Cms\RegenerateDelta"/>
+    </event>
+    <event name="cms_block_delete_after">
+        <observer name="mage_obsidian_cms_delta_block_delete"
+                  instance="MageObsidian\ModernFrontend\Observer\Cms\RegenerateDelta"/>
+    </event>
+</config>

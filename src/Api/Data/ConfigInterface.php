@@ -49,4 +49,11 @@ interface ConfigInterface
      */
     public const string CMS_CONTENT_PATH = 'mage-obsidian/cms';
     public const string CMS_CANDIDATES_FILE = 'candidates.json';
+
+    /**
+     * The class list a build covered, written into its own output by the engine
+     * so it travels with whatever gets deployed. Mirrored by CMS_BASELINE_FILE
+     * in the engine's config/default.ts.
+     */
+    public const string CMS_BASELINE_FILE = 'cms-candidates.json';
 }

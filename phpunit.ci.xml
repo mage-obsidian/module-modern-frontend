@@ -38,6 +38,8 @@
             <exclude>src/Test/Unit/Model/Cms/IslandDirectiveTest.php</exclude>
             <exclude>src/Test/Unit/Model/Config/Source/CmsIslandTest.php</exclude>
             <exclude>src/Test/Unit/Service/Cms/ContentExporterTest.php</exclude>
+            <exclude>src/Test/Unit/Service/Cms/TailwindCliTest.php</exclude>
+            <exclude>src/Test/Unit/Service/Cms/DeltaStylesheetTest.php</exclude>
         </testsuite>
     </testsuites>
 </phpunit>

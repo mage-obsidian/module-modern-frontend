@@ -79,6 +79,31 @@ class ContentExporter
     }
 
     /**
+     * The class names written across every page and block that is in scope,
+     * read straight from the database rather than from the last export.
+     *
+     * This is what the runtime compares against the build's baseline, so it has
+     * to answer for the content as it is now — an export that ran an hour ago
+     * would make the difference stale in exactly the case the difference exists
+     * to catch.
+     *
+     * @return string[]
+     */
+    public function collectCandidates(): array
+    {
+        $candidates = [];
+        foreach ([$this->pages(), $this->blocks()] as $rows) {
+            foreach ($rows as $content) {
+                if ($content !== null) {
+                    $candidates[] = ClassCandidates::extract($content);
+                }
+            }
+        }
+
+        return $candidates === [] ? [] : ClassCandidates::merge(...$candidates);
+    }
+
+    /**
      * The class names the last export saw, or an empty list when there is none.
      *
      * @return string[]
