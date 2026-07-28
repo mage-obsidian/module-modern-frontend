@@ -162,15 +162,34 @@ class ViteResolverTest extends TestCase
         $this->assertStringContainsString('data-strategy="eager"', $html);
     }
 
-    public function testRenderVueComponentMarkerIsEmptyWithoutPlaceholder(): void
+    public function testRenderVueComponentMarkerIsEmptyWithoutServerHtml(): void
     {
         $html = $this->buildResolver()->renderVueComponent('Vendor::Card', [], true);
 
         $this->assertStringContainsString('data-strategy="eager"></div>', $html);
+        $this->assertStringNotContainsString('data-hydrate', $html);
     }
 
-    public function testRenderVueComponentEmitsPlaceholderInsideMarker(): void
+    public function testRenderVueComponentEmitsServerHtmlInsideMarker(): void
     {
+        $html = $this->buildResolver()->renderVueComponent(
+            'Vendor::Card',
+            [],
+            true,
+            '<span class="price">$49.00</span>',
+            true
+        );
+
+        $this->assertStringContainsString(
+            'data-strategy="eager" data-hydrate><span class="price">$49.00</span></div>',
+            $html
+        );
+    }
+
+    public function testServerHtmlIsAPlaceholderUnlessHydrationIsAskedFor(): void
+    {
+        // Markup that only approximates the component must not be hydrated: the
+        // runtime clears it, exactly as it did before hydration existed.
         $html = $this->buildResolver()->renderVueComponent(
             'Vendor::Card',
             [],
@@ -178,12 +197,68 @@ class ViteResolverTest extends TestCase
             '<span class="skeleton">icon</span>'
         );
 
-        // The placeholder is server-rendered inside the marker so the slot is not
-        // an empty box before hydration; Vue clears it on mount.
         $this->assertStringContainsString(
             'data-strategy="eager"><span class="skeleton">icon</span></div>',
             $html
         );
+        $this->assertStringNotContainsString('data-hydrate', $html);
+    }
+
+    public function testHydrationIsNotClaimedForEmptyServerHtml(): void
+    {
+        $html = $this->buildResolver()->renderVueComponent('Vendor::Card', [], true, '', true);
+
+        $this->assertStringNotContainsString('data-hydrate', $html);
+    }
+
+    public function testServerHtmlDropsTheWhitespaceTemplateIndentationAdds(): void
+    {
+        $html = $this->buildResolver()->renderVueComponent(
+            'Vendor::Card',
+            [],
+            true,
+            "\n    <form>\n        <p>\$49.00</p>\n        <span>28</span>\n    </form>\n",
+            true
+        );
+
+        $this->assertStringContainsString(
+            'data-hydrate><form><p>$49.00</p><span>28</span></form></div>',
+            $html
+        );
+    }
+
+    public function testServerHtmlDropsIndentationLeftBehindByATwigBlockTag(): void
+    {
+        // Twig eats the newline after `{% endapply %}`, so this arrives as bare
+        // spaces; Vue expects no node at all between the two.
+        $html = $this->buildResolver()->renderVueComponent(
+            'Vendor::Card',
+            [],
+            true,
+            "<span>a</span><!---->        </div>"
+        );
+
+        $this->assertStringContainsString('<span>a</span><!----></div>', $html);
+    }
+
+    public function testServerHtmlKeepsTextInsideAnElementUntouched(): void
+    {
+        $html = $this->buildResolver()->renderVueComponent(
+            'Vendor::Card',
+            [],
+            true,
+            "<p>two   spaces</p>\n<p>and\na newline</p>"
+        );
+
+        $this->assertStringContainsString('<p>two   spaces</p><p>and' . "\n" . 'a newline</p>', $html);
+    }
+
+    public function testServerHtmlThatIsOnlyWhitespaceLeavesTheMarkerEmpty(): void
+    {
+        $html = $this->buildResolver()->renderVueComponent('Vendor::Card', [], true, "\n   \n");
+
+        $this->assertStringContainsString('data-strategy="eager"></div>', $html);
+        $this->assertStringNotContainsString('data-hydrate', $html);
     }
 
     public function testRenderVueComponentEmitsModulePreloadForEagerIslandBeforeTheMarker(): void

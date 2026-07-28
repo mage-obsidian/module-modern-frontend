@@ -13,6 +13,7 @@ use MageObsidian\ModernFrontend\Model\Config\ConfigProvider;
 use InvalidArgumentException;
 use Magento\Framework\View\Element\Template as MagentoTemplate;
 use Magento\Framework\View\Element\Template\Context;
+use MageObsidian\ModernFrontend\Service\Vue\IslandMarkup;
 use MageObsidian\ModernFrontend\ViewModel\Image;
 use MageObsidian\ModernFrontend\ViewModel\SchemaOrg;
 use MageObsidian\ModernFrontend\ViewModel\ViteResolver;
@@ -31,6 +32,7 @@ class Template extends MagentoTemplate
      * @param ViteResolver $viteResolver
      * @param SchemaOrg $schemaOrg
      * @param Image $image
+     * @param IslandMarkup $islandMarkup
      * @param array $data
      */
     public function __construct(
@@ -38,6 +40,7 @@ class Template extends MagentoTemplate
         private readonly ViteResolver $viteResolver,
         private readonly SchemaOrg $schemaOrg,
         private readonly Image $image,
+        private readonly IslandMarkup $islandMarkup,
         array $data = []
     ) {
         parent::__construct($context, $data);
@@ -111,7 +114,8 @@ class Template extends MagentoTemplate
      * @param string $componentName Component name in the format "Vendor::Component".
      * @param array $props Properties to pass to the Vue component.
      * @param bool $eager Mount immediately instead of on viewport entry.
-     * @param string $placeholder Server-rendered markup shown until hydration.
+     * @param string $serverHtml Server-rendered markup to paint inside the marker.
+     * @param bool $hydrate Whether that markup is the component's initial state.
      *
      * @return string The island marker markup.
      */
@@ -119,9 +123,35 @@ class Template extends MagentoTemplate
         string $componentName,
         array $props = [],
         bool $eager = false,
-        string $placeholder = ''
+        string $serverHtml = '',
+        bool $hydrate = false
     ): string {
-        return $this->viteResolver->renderVueComponent($componentName, $props, $eager, $placeholder);
+        return $this->viteResolver->renderVueComponent($componentName, $props, $eager, $serverHtml, $hydrate);
+    }
+
+    /**
+     * Wrap a server-rendered loop in the fragment anchors Vue hydration expects.
+     *
+     * @param string $html
+     *
+     * @return string
+     */
+    public function islandList(string $html): string
+    {
+        return $this->islandMarkup->list($html);
+    }
+
+    /**
+     * Emit server-rendered markup, or Vue's placeholder for an untaken `v-if`.
+     *
+     * @param bool $condition
+     * @param string $html
+     *
+     * @return string
+     */
+    public function islandIf(bool $condition, string $html): string
+    {
+        return $this->islandMarkup->if($condition, $html);
     }
 
     /**
@@ -160,15 +190,17 @@ class Template extends MagentoTemplate
      * @param string $iconName Icon name.
      * @param string $iconSet Icon set (solid, outline).
      * @param string $size Icon size (16, 20, 24).
+     * @param string $class Classes for the `<svg>`.
      *
-     * @return string Full file URL.
+     * @return string
      */
     public function getHeroIcon(
         string $iconName,
         string $iconSet = 'solid',
         string $size = '24',
+        string $class = '',
     ): string {
-        return $this->viteResolver->getHeroIcon($iconName, $iconSet, $size);
+        return $this->viteResolver->getHeroIcon($iconName, $iconSet, $size, $class);
     }
 
     /**

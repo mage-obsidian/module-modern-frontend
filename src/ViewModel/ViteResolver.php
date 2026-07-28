@@ -35,6 +35,15 @@ class ViteResolver implements ArgumentInterface
      */
     private const JS_TRANSLATION_FILE = 'js-translation.json';
 
+    public const string ICON_SET_OUTLINE = 'outline';
+
+    public const string ICON_SET_SOLID = 'solid';
+
+    private const string ICON_ASSET_PREFIX = 'MageObsidian_ModernFrontend::assets/@heroicons/';
+
+    /** Any icon that exists; only its resolved URL's directory is used. */
+    private const string ICON_PROBE = '24/solid/x-mark.svg';
+
     /**
      * ViteResolver constructor.
      *
@@ -161,15 +170,20 @@ class ViteResolver implements ArgumentInterface
     /**
      * Emit an island marker for a Vue component.
      *
-     * Instead of an inline mount script per call, this renders an inert marker
-     * that the page-level bootstrap ({@see self::getIslandsRuntimeUrl()})
-     * discovers and mounts — by default lazily, when the marker enters the
-     * viewport, so below-the-fold components cost nothing until scrolled to.
-     * The Vue runtime and i18n plugin load once per page and are shared.
+     * Instead of an inline mount script per call, this renders a marker that the
+     * page-level bootstrap ({@see self::getIslandsRuntimeUrl()}) discovers and
+     * mounts — by default lazily, when the marker enters the viewport, so
+     * below-the-fold components cost nothing until scrolled to. The Vue runtime
+     * and i18n plugin load once per page and are shared.
+     *
+     * With `$hydrate`, `$serverHtml` is the island's initial state and Vue adopts
+     * it in place; without it, a placeholder Vue replaces on mount.
      *
      * @param string $componentName Component name in the format "Vendor::Component".
      * @param array $props Properties to pass to the Vue component.
      * @param bool $eager Mount immediately instead of on viewport entry (above-the-fold).
+     * @param string $serverHtml Server-rendered markup to paint inside the marker.
+     * @param bool $hydrate Whether that markup is the component's initial state.
      *
      * @return string The island marker markup.
      */
@@ -177,7 +191,8 @@ class ViteResolver implements ArgumentInterface
         string $componentName,
         array $props = [],
         bool $eager = false,
-        string $placeholder = ''
+        string $serverHtml = '',
+        bool $hydrate = false
     ): string {
         $relativePath = $this->buildRelativePath($componentName, ConfigInterface::VUE_COMPONENTS_PATH);
         $componentUrl = $this->getViteFileUrl($relativePath);
@@ -196,12 +211,25 @@ class ViteResolver implements ArgumentInterface
         // the bootstrap block too — e.g. body-end drawers/toasts.
         $preload = $eager ? $this->renderEagerPreload($relativePath . '.js') : '';
 
-        // Server-rendered placeholder sits inside the marker so the slot is not an
-        // empty zero-size box before hydration; Vue clears the container on mount
-        // (runtime-dom sets innerHTML = '') and swaps in the real component.
+        $serverHtml = $this->condenseWhitespace($serverHtml);
+        $hydrateAttr = $hydrate && $serverHtml !== '' ? ' data-hydrate' : '';
+
         return $preload . <<<HTML
-            <div data-mage-island data-component="$componentAttr" data-props="$propsAttr" data-strategy="$strategy">$placeholder</div>
+            <div data-mage-island data-component="$componentAttr" data-props="$propsAttr" data-strategy="$strategy"$hydrateAttr>$serverHtml</div>
             HTML;
+    }
+
+    /**
+     * Strip the whitespace between tags that a template's indentation adds, which
+     * Vue's `whitespace: 'condense'` does not expect and would fail to hydrate.
+     *
+     * @param string $html
+     *
+     * @return string
+     */
+    private function condenseWhitespace(string $html): string
+    {
+        return preg_replace('/>\s+</', '><', trim($html)) ?? trim($html);
     }
 
     /**
@@ -266,27 +294,54 @@ class ViteResolver implements ArgumentInterface
     }
 
     /**
-     * Get the full URL for a Heroicons SVG icon.
+     * Render a Heroicons SVG.
+     *
+     * `$class` exists for islands: an icon inside markup Vue adopts has to carry
+     * the classes the component would have put on it, because Vue reports a class
+     * difference but keeps the server's node — the class would silently never land.
      *
      * @param string $iconName Icon name.
      * @param string $iconSet Icon set (solid, outline).
      * @param string $size Icon size (16, 20, 24).
+     * @param string $class Classes for the `<svg>`.
      *
-     * @return string Full file URL.
+     * @return string
      */
     public function getHeroIcon(
         string $iconName,
-        string $iconSet = 'solid',
+        string $iconSet = self::ICON_SET_SOLID,
         string $size = '24',
+        string $class = '',
     ): string {
         if (!pathinfo($iconName, PATHINFO_EXTENSION)) {
             $iconName .= '.svg';
         }
-        $url = $this->getViewFileUrl("MageObsidian_ModernFrontend::assets/@heroicons/{$size}/{$iconSet}/{$iconName}");
+        $url = $this->getIconBaseUrl() . "{$size}/{$iconSet}/{$iconName}";
+
+        $paint = $iconSet === self::ICON_SET_OUTLINE
+            ? 'fill="none" stroke="currentColor" stroke-width="1.5"'
+            : 'fill="currentColor"';
+        $classAttr = $class === ''
+            ? ''
+            : ' class="' . htmlspecialchars($class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"';
+
         return <<<HTML
-            <svg width="$size" height="$size" xmlns="http://www.w3.org/2000/svg">
+            <svg width="$size" height="$size" viewBox="0 0 $size $size" $paint xmlns="http://www.w3.org/2000/svg" aria-hidden="true"$classAttr>
                 <use href="$url#icon"></use>
             </svg>
         HTML;
+    }
+
+    /**
+     * Base URL the icon set is served from, so the Vue `Icon` component builds
+     * the same `<use href>` this does and an island carrying icons can hydrate.
+     *
+     * @return string
+     */
+    public function getIconBaseUrl(): string
+    {
+        $probe = self::ICON_ASSET_PREFIX . self::ICON_PROBE;
+
+        return substr($this->getViewFileUrl($probe), 0, -strlen(self::ICON_PROBE));
     }
 }
