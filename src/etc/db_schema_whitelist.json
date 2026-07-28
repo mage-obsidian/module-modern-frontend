@@ -1,0 +1,12 @@
+{
+    "cms_page": {
+        "column": {
+            "mage_obsidian_skip_css_scan": true
+        }
+    },
+    "cms_block": {
+        "column": {
+            "mage_obsidian_skip_css_scan": true
+        }
+    }
+}
