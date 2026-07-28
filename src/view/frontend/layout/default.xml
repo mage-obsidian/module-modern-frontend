@@ -10,6 +10,10 @@
 <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
     <body>
+        <referenceBlock name="head.additional">
+            <block class="MageObsidian\ModernFrontend\Block\Cms\DeltaStylesheet"
+                   name="mage_obsidian.cms_delta_stylesheet"/>
+        </referenceBlock>
         <referenceContainer name="before.body.end">
             <block class="MageObsidian\ModernFrontend\Block\I18nRuntime"
                    name="mage_obsidian.i18n_runtime"/>
