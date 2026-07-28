@@ -4,6 +4,8 @@
     <module name="MageObsidian_ModernFrontend">
         <sequence>
             <module name="Magento_Theme"/>
+            <module name="Magento_Cms"/>
+            <module name="Magento_Widget"/>
         </sequence>
     </module>
 </config>

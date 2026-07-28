@@ -132,6 +132,20 @@
         </arguments>
     </type>
 
+    <type name="MageObsidian\ModernFrontend\Service\Cms\IslandRegistry">
+        <arguments>
+            <argument name="islands" xsi:type="array"/>
+        </arguments>
+    </type>
+
+    <type name="Magento\Framework\Filter\SimpleDirective\ProcessorPool">
+        <arguments>
+            <argument name="processors" xsi:type="array">
+                <item name="island" xsi:type="object">MageObsidian\ModernFrontend\Model\Cms\IslandDirective</item>
+            </argument>
+        </arguments>
+    </type>
+
     <type name="Magento\Translation\Model\Js\Config">
         <arguments>
             <argument name="patterns" xsi:type="array">

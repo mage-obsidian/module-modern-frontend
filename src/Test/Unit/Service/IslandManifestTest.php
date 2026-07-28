@@ -131,4 +131,38 @@ class IslandManifestTest extends TestCase
         $this->assertSame([], IslandManifest::collectPreloadFiles([], ['whatever.js']));
         $this->assertSame([], IslandManifest::collectPreloadFiles($this->manifest(), []));
     }
+
+    public function testNamesEveryComponentChunkAsAnIslandName(): void
+    {
+        $this->assertSame(
+            [
+                'MageObsidian_Storefront::cart/CartCount',
+                'MageObsidian_Storefront::feedback/Toast',
+                'MageObsidian_Storefront::wishlist/WishlistCount',
+            ],
+            IslandManifest::collectComponentNames($this->manifest())
+        );
+    }
+
+    public function testAThemeOwnedComponentHasNoVendorPrefix(): void
+    {
+        $names = IslandManifest::collectComponentNames([
+            'Hero.vue' => ['file' => 'Theme/components/home/Hero.js'],
+        ]);
+
+        $this->assertSame(['home/Hero'], $names);
+    }
+
+    public function testIgnoresChunksThatAreNotComponents(): void
+    {
+        $names = IslandManifest::collectComponentNames([
+            'js' => ['file' => 'MageObsidian_ModernFrontend/js/customer-data.js'],
+            'shared' => ['file' => 'assets/section-store-D-Nj1XEV.js'],
+            'css' => ['file' => 'MageObsidian_Storefront/components/cart/CartCount.css'],
+            'malformed' => ['file' => ['not a string']],
+            'not an entry' => 'MageObsidian_Storefront/components/cart/CartCount.js',
+        ]);
+
+        $this->assertSame([], $names);
+    }
 }

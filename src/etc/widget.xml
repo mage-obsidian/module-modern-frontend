@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widgets xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Widget:etc/widget.xsd">
+    <widget id="mage_obsidian_island" class="MageObsidian\ModernFrontend\Block\Widget\Island">
+        <label translate="true">Vue Island</label>
+        <description translate="true">Mount a Vue component that a module registered as safe to place in content.</description>
+        <parameters>
+            <parameter name="component" xsi:type="select" required="true" visible="true" sort_order="10"
+                       source_model="MageObsidian\ModernFrontend\Model\Config\Source\CmsIsland">
+                <label translate="true">Component</label>
+            </parameter>
+            <parameter name="strategy" xsi:type="select" required="true" visible="true" sort_order="20">
+                <label translate="true">Mount</label>
+                <options>
+                    <option name="visible" value="visible" selected="true">
+                        <label translate="true">When it scrolls into view</label>
+                    </option>
+                    <option name="eager" value="eager">
+                        <label translate="true">Immediately</label>
+                    </option>
+                </options>
+            </parameter>
+            <parameter name="props" xsi:type="text" required="false" visible="true" sort_order="30">
+                <label translate="true">Props (JSON)</label>
+                <description translate="true">A JSON object merged over the component's registered defaults. Leave empty to use them as they are.</description>
+            </parameter>
+        </parameters>
+    </widget>
+</widgets>

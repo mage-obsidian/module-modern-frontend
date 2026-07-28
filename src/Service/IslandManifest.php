@@ -11,6 +11,7 @@ namespace MageObsidian\ModernFrontend\Service;
 
 use Magento\Framework\Filesystem\Driver\File;
 use Magento\Framework\View\Asset\Repository;
+use MageObsidian\ModernFrontend\Api\Data\ConfigInterface;
 use MageObsidian\ModernFrontend\Model\Config\ConfigProvider;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -63,6 +64,51 @@ class IslandManifest
         }
 
         return self::collectPreloadFiles($manifest, $componentFiles);
+    }
+
+    /**
+     * Island names of every Vue component in this theme's build.
+     *
+     * Empty when the manifest is unavailable — under HMR there is no build to
+     * read — so a caller listing components has to treat that as "unknown",
+     * not as "none exist".
+     *
+     * @return string[]
+     */
+    public function getBuiltComponents(): array
+    {
+        return self::collectComponentNames($this->loadManifest());
+    }
+
+    /**
+     * The inverse of the name ViteResolver builds: an output chunk sitting at
+     * `<Vendor_Module>/components/<path>.js` came from `Vendor_Module::<path>`,
+     * and one owned by the theme has no vendor prefix at all. Pure: testable
+     * without a Magento install.
+     *
+     * @param array<string, mixed> $manifest Decoded Vite manifest.
+     *
+     * @return string[]
+     */
+    public static function collectComponentNames(array $manifest): array
+    {
+        $pattern = '~^([^/]+)/' . preg_quote(ConfigInterface::VUE_COMPONENTS_PATH, '~') . '/(.+)\.js$~';
+
+        $names = [];
+        foreach ($manifest as $entry) {
+            $file = is_array($entry) ? ($entry['file'] ?? null) : null;
+            if (!is_string($file) || !preg_match($pattern, $file, $matches)) {
+                continue;
+            }
+            $names[] = $matches[1] === ConfigInterface::THEME_FILES_PATH
+                ? $matches[2]
+                : $matches[1] . '::' . $matches[2];
+        }
+
+        $names = array_values(array_unique($names));
+        sort($names);
+
+        return $names;
     }
 
     /**

@@ -34,6 +34,10 @@
             <exclude>src/Test/Unit/Service/CriticalCssProviderTest.php</exclude>
             <exclude>src/Test/Unit/ViewModel/CriticalCssTest.php</exclude>
             <exclude>src/Test/Unit/Service/Dev/DevWorkflowTest.php</exclude>
+            <exclude>src/Test/Unit/Service/Cms/IslandRendererTest.php</exclude>
+            <exclude>src/Test/Unit/Model/Cms/IslandDirectiveTest.php</exclude>
+            <exclude>src/Test/Unit/Model/Config/Source/CmsIslandTest.php</exclude>
+            <exclude>src/Test/Unit/Service/Cms/ContentExporterTest.php</exclude>
         </testsuite>
     </testsuites>
 </phpunit>
