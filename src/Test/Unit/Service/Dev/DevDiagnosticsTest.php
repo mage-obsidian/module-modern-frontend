@@ -265,4 +265,78 @@ class DevDiagnosticsTest extends TestCase
         $this->assertStringContainsString(DevDiagnostics::VARY_AWARE_IDENTIFIER, $r->hint);
         $this->assertStringContainsString(DevDiagnostics::PAGE_CACHE_VARY_ISSUE_URL, $r->hint);
     }
+
+    public function testEagerIslandWithoutServerHtmlIsReported(): void
+    {
+        $source = '{{ render_vue("Vendor_Module::catalog/ProductForm", { id: 1 }, true) }}';
+
+        $this->assertSame(
+            ['Vendor_Module::catalog/ProductForm'],
+            $this->diagnostics->eagerIslandsWithoutHydration($source)
+        );
+    }
+
+    public function testEagerIslandThatHydratesIsNotReported(): void
+    {
+        $source = '{{ render_vue("Vendor::Card", {}, true, serverHtml, true) }}';
+
+        $this->assertSame([], $this->diagnostics->eagerIslandsWithoutHydration($source));
+    }
+
+    public function testAPlaceholderAloneStillCountsAsShifting(): void
+    {
+        // Markup Vue throws away on mount reflows just like an empty container.
+        $source = '{{ render_vue("Vendor::Card", {}, true, placeholder) }}';
+
+        $this->assertSame(['Vendor::Card'], $this->diagnostics->eagerIslandsWithoutHydration($source));
+    }
+
+    public function testLazyIslandsAreNeverReported(): void
+    {
+        // A visible island mounts below the fold, where nothing has painted yet.
+        $this->assertSame([], $this->diagnostics->eagerIslandsWithoutHydration(
+            '{{ render_vue("Vendor::Card", {}, false) }}{{ render_vue("Vendor::Other", {}) }}'
+        ));
+    }
+
+    public function testThePhtmlSpellingIsRecognisedToo(): void
+    {
+        $source = '<?= $block->renderVueComponent("Vendor::Card", [], true) ?>';
+
+        $this->assertSame(['Vendor::Card'], $this->diagnostics->eagerIslandsWithoutHydration($source));
+    }
+
+    public function testCommasInsideArgumentsDoNotShiftTheArgumentPositions(): void
+    {
+        $source = '{{ render_vue("Vendor::Card", { a: fn(1, 2), b: [3, 4], c: "x, y" }, true) }}';
+
+        $this->assertSame(['Vendor::Card'], $this->diagnostics->eagerIslandsWithoutHydration($source));
+    }
+
+    public function testACallSplitOverSeveralLinesIsStillParsed(): void
+    {
+        $source = "{{ render_vue(\n    'Vendor::Card',\n    { a: 1 },\n    true\n) }}";
+
+        $this->assertSame(['Vendor::Card'], $this->diagnostics->eagerIslandsWithoutHydration($source));
+    }
+
+    public function testEveryIslandHydratingMeansAHealthyCheck(): void
+    {
+        $result = $this->diagnostics->evaluateIslandHydration(['a.twig' => [], 'b.twig' => []]);
+
+        $this->assertSame('ok', $result->status);
+    }
+
+    public function testIslandsWithoutServerHtmlWarnAndNameTemplateAndComponent(): void
+    {
+        $result = $this->diagnostics->evaluateIslandHydration([
+            'product/view.twig' => ['Vendor::ProductForm', 'Vendor::Gallery'],
+        ]);
+
+        $this->assertSame('warn', $result->status);
+        $this->assertStringContainsString('2 eager island(s)', $result->message);
+        $this->assertStringContainsString('product/view.twig', $result->message);
+        $this->assertStringContainsString('Vendor::ProductForm', $result->message);
+        $this->assertStringContainsString('mage-obsidian:island-ssr', $result->hint);
+    }
 }
