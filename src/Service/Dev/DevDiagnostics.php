@@ -174,6 +174,63 @@ class DevDiagnostics
         );
     }
 
+    /**
+     * Without the binary the store still works — it just cannot generate a class
+     * an author writes after the build, which fails invisibly: the class is in
+     * the markup and no rule ever arrives.
+     */
+    public function evaluateTailwindBinary(bool $available, string $path, string $version): CheckResult
+    {
+        if (!$available) {
+            return CheckResult::warn(
+                'Tailwind CLI',
+                sprintf('Not found or not executable at %s.', $path),
+                'Install the standalone build there so classes written in CMS content after the last '
+                    . 'theme build are generated. See the CMS docs for the one-line install.'
+            );
+        }
+
+        return CheckResult::ok(
+            'Tailwind CLI',
+            sprintf('%s%s.', $path, $version !== '' ? ' (v' . $version . ')' : '')
+        );
+    }
+
+    /**
+     * @param int $classes
+     * @param string[] $unresolved
+     * @param bool $hasBaseline
+     */
+    public function evaluateCmsDelta(int $classes, array $unresolved, bool $hasBaseline): CheckResult
+    {
+        if (!$hasBaseline) {
+            return CheckResult::warn(
+                'CMS delta',
+                'The theme was built without a class baseline, so every class in CMS content is treated '
+                    . 'as new.',
+                'Run mage-obsidian:cms:export and rebuild the theme; the build writes the baseline next '
+                    . 'to its own output.'
+            );
+        }
+
+        if ($unresolved !== []) {
+            return CheckResult::warn(
+                'CMS delta',
+                sprintf(
+                    'Tailwind generated no rule for %d class(es) written in CMS content: %s.',
+                    count($unresolved),
+                    implode(', ', $unresolved)
+                ),
+                'These are not Tailwind utilities — a typo, or a class from another framework. Fix them '
+                    . 'in the content, or ship the CSS they need with it.'
+            );
+        }
+
+        return $classes === 0
+            ? CheckResult::ok('CMS delta', 'The build covers every class written in CMS content.')
+            : CheckResult::ok('CMS delta', sprintf('%d class(es) generated on the fly.', $classes));
+    }
+
     public function evaluateMode(string $mode): CheckResult
     {
         return CheckResult::ok('App mode', sprintf('Current mode: %s.', $mode));
