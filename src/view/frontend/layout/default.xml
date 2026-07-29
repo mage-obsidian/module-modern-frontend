@@ -19,6 +19,8 @@
                    name="mage_obsidian.i18n_runtime"/>
             <block class="MageObsidian\ModernFrontend\Block\SectionDataRuntime"
                    name="mage_obsidian.section_data_runtime"/>
+            <block class="MageObsidian\ModernFrontend\Block\UxRuntime"
+                   name="mage_obsidian.ux_runtime"/>
             <block class="MageObsidian\ModernFrontend\Block\IconRuntime"
                    name="mage_obsidian.icon_runtime"/>
             <block class="MageObsidian\ModernFrontend\Block\IslandsRuntime"
