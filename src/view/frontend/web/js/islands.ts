@@ -16,8 +16,18 @@
  * warns each time it does, which buries the warnings that matter.
  */
 import type { App } from 'vue';
-import { hydrateAll } from 'mage-obsidian/runtime/islands.ts';
+import { hydrateAll, type IslandAnnouncement } from 'mage-obsidian/runtime/islands.ts';
 import { diffHydration, formatMismatch } from 'mage-obsidian/runtime/hydrationDiff.ts';
+import { LifecycleEvent, type IslandEvent } from 'mage-obsidian/runtime/lifecycleEvents.ts';
+import { MutationPhase } from 'mage-obsidian/runtime/mutationEvent.ts';
+import events from 'MageObsidian_ModernFrontend::js/events';
+import { announcePageReady, bindPageLifecycle } from 'MageObsidian_ModernFrontend::js/lifecycle';
+
+const ISLAND_EVENT: Record<MutationPhase, LifecycleEvent> = {
+    [MutationPhase.Before]: LifecycleEvent.IslandMountBefore,
+    [MutationPhase.After]: LifecycleEvent.IslandMountAfter,
+    [MutationPhase.Failed]: LifecycleEvent.IslandMountFailed,
+};
 
 // Values the server cannot predict (a generated id, a locale-formatted number)
 // are exempted with Vue's own attribute, so they are cut from both sides rather
@@ -95,8 +105,21 @@ function inspect(element: HTMLElement, snapshot: unknown): void {
     }
 }
 
+function announce(phase: MutationPhase, detail: IslandAnnouncement): void {
+    void events.dispatch(ISLAND_EVENT[phase], {
+        component: detail.component,
+        strategy: detail.strategy,
+        element: detail.element,
+        durationMs: detail.durationMs,
+        error: detail.error,
+    } satisfies IslandEvent);
+}
+
 async function start(): Promise<void> {
+    bindPageLifecycle();
+
     const markers = document.querySelectorAll<HTMLElement>('[data-mage-island]');
+    announcePageReady(markers.length);
     if (markers.length === 0) {
         return;
     }
@@ -117,6 +140,7 @@ async function start(): Promise<void> {
         },
         snapshot: __MAGE_OBSIDIAN_DEV__ ? takeSnapshot : undefined,
         onMounted: __MAGE_OBSIDIAN_DEV__ ? inspect : undefined,
+        announce,
         // The engine's minimal `AppLike` only declares `mount`; the real object
         // is a full Vue app, so widen the param to call `use` for plugin wiring.
         configureApp: (app: App) => {

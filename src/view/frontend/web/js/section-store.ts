@@ -23,6 +23,7 @@ import {
     parseSectionStorage,
     selectSection,
     mergeSections,
+    patchSection,
     buildSectionLoadUrl,
     readCookie,
     needsHydration,
@@ -32,6 +33,8 @@ import {
     type SectionMap,
 } from 'mage-obsidian/runtime/sectionStoreCore.ts';
 import { ensureSharedPinia } from 'MageObsidian_ModernFrontend::js/store';
+import events from 'MageObsidian_ModernFrontend::js/events';
+import { LifecycleEvent, type SectionEvent } from 'mage-obsidian/runtime/lifecycleEvents.ts';
 
 export interface SectionStoreConfig {
     /** Unique Pinia store id. */
@@ -148,19 +151,39 @@ export function createSectionStore(config: SectionStoreConfig) {
          */
         async function reload(names: string[] = [], options: { force?: boolean } = {}): Promise<void> {
             const url = buildSectionLoadUrl(endpoint, names, { forceNewTimestamp: options.force ?? true });
+            await events.dispatch(LifecycleEvent.SectionReloadBefore, { names } satisfies SectionEvent);
             try {
                 const response = await fetch(url, {
                     credentials: 'same-origin',
                     headers: { 'X-Requested-With': 'XMLHttpRequest' },
                 });
                 if (!response.ok) {
+                    await events.dispatch(LifecycleEvent.SectionReloadFailed, { names } satisfies SectionEvent);
                     return;
                 }
-                sections.value = mergeSections(sections.value, await response.json());
+                const incoming = await response.json();
+                sections.value = mergeSections(sections.value, incoming);
                 writeStorage(sections.value, names.length === 0 ? cookieVersion() : undefined);
+                await events.dispatch(LifecycleEvent.SectionReloadAfter, {
+                    names,
+                    changed: incoming && typeof incoming === 'object' ? Object.keys(incoming) : [],
+                } satisfies SectionEvent);
             } catch {
                 // Keep the current snapshot; section data is never page-critical.
+                await events.dispatch(LifecycleEvent.SectionReloadFailed, { names } satisfies SectionEvent);
             }
+        }
+
+        function patch(name: string, partial: SectionData): void {
+            sections.value = patchSection(sections.value, name, partial);
+        }
+
+        function snapshot(): SectionMap {
+            return { ...sections.value };
+        }
+
+        function restore(previous: SectionMap): void {
+            sections.value = { ...previous };
         }
 
         /**
@@ -246,7 +269,7 @@ export function createSectionStore(config: SectionStoreConfig) {
         subscribe();
         scheduleHydrate();
 
-        return { sections, section, sync, reload };
+        return { sections, section, sync, reload, patch, snapshot, restore };
     });
 }
 
