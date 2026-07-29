@@ -20,6 +20,9 @@
             <checkout>
                 <layout_mode>stepped</layout_mode>
             </checkout>
+            <storefront>
+                <optimistic_ui>1</optimistic_ui>
+            </storefront>
         </mage_obsidian>
     </default>
 </config>

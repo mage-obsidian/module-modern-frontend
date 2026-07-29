@@ -100,6 +100,17 @@
                     <config_path>mage_obsidian/checkout/layout_mode</config_path>
                 </field>
             </group>
+            <group id="storefront" translate="label" type="text" sortOrder="50"
+                   showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Storefront</label>
+                <field id="optimistic_ui" translate="label comment" type="select" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Optimistic UI</label>
+                    <comment>Apply cart quantity and removal changes in the interface before the server confirms them, reverting with a warning if it refuses. Turn off to wait for the server on every change.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <config_path>mage_obsidian/storefront/optimistic_ui</config_path>
+                </field>
+            </group>
         </section>
     </system>
 </config>

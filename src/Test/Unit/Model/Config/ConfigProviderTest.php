@@ -28,6 +28,26 @@ class ConfigProviderTest extends TestCase
         $this->assertSame(CheckoutLayout::STEPPED, $provider->getCheckoutLayoutMode());
     }
 
+    public function testOptimisticUiIsOnWhenEnabled(): void
+    {
+        $this->assertTrue($this->optimisticProvider('1')->isOptimisticUiEnabled());
+    }
+
+    public function testOptimisticUiIsOffWhenTheMerchantTurnedItOff(): void
+    {
+        $this->assertFalse($this->optimisticProvider('0')->isOptimisticUiEnabled());
+    }
+
+    private function optimisticProvider(?string $storedValue): ConfigProvider
+    {
+        $scopeConfig = $this->createMock(ScopeConfigInterface::class);
+        $scopeConfig->method('getValue')
+            ->with(ConfigProvider::STOREFRONT_OPTIMISTIC_UI, ScopeInterface::SCOPE_STORE)
+            ->willReturn($storedValue);
+
+        return new ConfigProvider($scopeConfig, $this->createMock(State::class));
+    }
+
     private function provider(?string $storedValue): ConfigProvider
     {
         $scopeConfig = $this->createMock(ScopeConfigInterface::class);

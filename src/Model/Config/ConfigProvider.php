@@ -30,6 +30,9 @@ class ConfigProvider implements ArgumentInterface
     public const string STRUCTURED_DATA_ENABLED = self::SEO_PATH . 'structured_data_enabled';
     public const string CHECKOUT_PATH = self::ROOT_PATH . 'checkout/';
     public const string CHECKOUT_LAYOUT_MODE = self::CHECKOUT_PATH . 'layout_mode';
+    public const string STOREFRONT_PATH = self::ROOT_PATH . 'storefront/';
+    public const string STOREFRONT_OPTIMISTIC_UI = self::STOREFRONT_PATH . 'optimistic_ui';
+    public const string CART_SUMMARY_USE_QTY = 'checkout/cart_link/use_qty';
 
     /**
      * @param ScopeConfigInterface $scopeConfig
@@ -78,6 +81,29 @@ class ConfigProvider implements ArgumentInterface
     {
         $mode = (string)$this->scopeConfig->getValue(self::CHECKOUT_LAYOUT_MODE, ScopeInterface::SCOPE_STORE);
         return $mode !== '' ? $mode : Source\CheckoutLayout::STEPPED;
+    }
+
+    /**
+     * Whether cart mutations may render their outcome before the server confirms
+     * it (reverting when it refuses). On by default.
+     *
+     * @return bool
+     */
+    public function isOptimisticUiEnabled(): bool
+    {
+        return (bool)$this->scopeConfig->getValue(self::STOREFRONT_OPTIMISTIC_UI, ScopeInterface::SCOPE_STORE);
+    }
+
+    /**
+     * Whether the cart badge counts units rather than distinct lines
+     * (Magento's own `checkout/cart_link/use_qty`). The storefront needs it to
+     * predict the badge while an add is in flight.
+     *
+     * @return bool
+     */
+    public function doesCartSummaryCountQty(): bool
+    {
+        return (bool)$this->scopeConfig->getValue(self::CART_SUMMARY_USE_QTY, ScopeInterface::SCOPE_STORE);
     }
 
     /**
