@@ -1,0 +1,14 @@
+{
+    "name": "@mage-obsidian/modern-frontend-runtime",
+    "version": "0.1.0",
+    "description": "Unit-test harness for MageObsidian ModernFrontend's inlined runtime scripts.",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "test": "vitest run",
+        "test:watch": "vitest"
+    },
+    "devDependencies": {
+        "vitest": "^3.2.6"
+    }
+}
