@@ -1,17 +1,10 @@
-/**
- * The storefront's shared event bus — Magento's observers, on the front end.
- *
- * One instance per page, published on `window` so code that is not part of the
- * bundle (a tag manager, a merchant's inline snippet) can subscribe without an
- * import. Every dispatch is also mirrored as a `CustomEvent` named
- * `obsidian:<event>` on `window`, which is the only thing a third-party script
- * needs to listen for — but a DOM listener cannot amend the data, so a module
- * that wants to change what happens registers a real observer instead.
- */
 import { EventManager } from 'mage-obsidian/runtime/eventManager.ts';
+import 'mage-obsidian/runtime/lifecycleEvents.ts';
 
 const GLOBAL_KEY = '__MAGE_OBSIDIAN_EVENTS__';
 const DOM_PREFIX = 'obsidian:';
+
+declare const __MAGE_OBSIDIAN_DEV__: boolean;
 
 declare global {
     interface Window {
@@ -20,14 +13,16 @@ declare global {
 }
 
 function create(): EventManager {
-    const manager = new EventManager();
-    const dispatch = manager.dispatch.bind(manager);
+    const manager = new EventManager({ debug: __MAGE_OBSIDIAN_DEV__ });
 
-    manager.dispatch = async <T extends object>(event: string, data: T): Promise<T> => {
-        const result = await dispatch(event, data);
-        window.dispatchEvent(new CustomEvent(`${DOM_PREFIX}${event}`, { detail: result }));
-        return result;
-    };
+    manager.onDispatch({
+        end(event, data, options) {
+            if (options.mirror === false) {
+                return;
+            }
+            window.dispatchEvent(new CustomEvent(`${DOM_PREFIX}${event}`, { detail: data }));
+        },
+    });
 
     return manager;
 }
