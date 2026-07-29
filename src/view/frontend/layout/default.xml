@@ -13,6 +13,8 @@
         <referenceBlock name="head.additional">
             <block class="MageObsidian\ModernFrontend\Block\Cms\DeltaStylesheet"
                    name="mage_obsidian.cms_delta_stylesheet"/>
+            <block class="MageObsidian\ModernFrontend\Block\PrePaintRuntime"
+                   name="mage_obsidian.prepaint_runtime"/>
         </referenceBlock>
         <referenceContainer name="before.body.end">
             <block class="MageObsidian\ModernFrontend\Block\I18nRuntime"

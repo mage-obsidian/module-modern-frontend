@@ -140,6 +140,19 @@ class ViteResolver implements ArgumentInterface
      * @return string Path relative to the Vite generated folder, e.g. "Vendor/components/Card".
      * @throws InvalidArgumentException If the name is empty.
      */
+    /**
+     * The island marker's chunk path for a "Vendor::Path" component name, i.e. the
+     * tail of the `data-component` URL a stylesheet can match on.
+     *
+     * @param string $name
+     *
+     * @return string
+     */
+    public function getComponentFile(string $name): string
+    {
+        return $this->buildRelativePath($name, ConfigInterface::VUE_COMPONENTS_PATH) . '.js';
+    }
+
     private function buildRelativePath(string $name, ?string $defaultStart = null): string
     {
         if (empty($name)) {
