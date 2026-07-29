@@ -178,12 +178,24 @@ export function createSectionStore(config: SectionStoreConfig) {
             sections.value = patchSection(sections.value, name, partial);
         }
 
-        function snapshot(): SectionMap {
-            return { ...sections.value };
+        function snapshot(names?: string[]): SectionMap {
+            const current = sections.value ?? {};
+            if (!names) {
+                return { ...current };
+            }
+
+            return names.reduce<SectionMap>((picked, name) => {
+                const value = selectSection(current, name);
+
+                return value ? { ...picked, [name]: value } : picked;
+            }, {});
         }
 
+        // Merges rather than replaces, so a rollback owns the sections it captured
+        // and nothing else: one failed mutation cannot undo another's result.
+
         function restore(previous: SectionMap): void {
-            sections.value = { ...previous };
+            sections.value = mergeSections(sections.value, previous);
         }
 
         /**
