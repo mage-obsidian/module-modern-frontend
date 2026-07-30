@@ -33,6 +33,10 @@ import {
     type SectionMap,
 } from 'mage-obsidian/runtime/sectionStoreCore.ts';
 import { ensureSharedPinia } from 'MageObsidian_ModernFrontend::js/store';
+import {
+    bindRehydrateOnRestore,
+    bindRehydrateOnActivate,
+} from 'MageObsidian_ModernFrontend::js/bfcache';
 import events from 'MageObsidian_ModernFrontend::js/events';
 import { LifecycleEvent, type SectionEvent } from 'mage-obsidian/runtime/lifecycleEvents.ts';
 
@@ -242,6 +246,15 @@ export function createSectionStore(config: SectionStoreConfig) {
                 return;
             }
             subscribed = true;
+
+            // Storage first: the staleness check compares the *stored* version,
+            // so a restored page would otherwise judge its frozen copy up to date.
+            const refresh = (): void => {
+                sync();
+                scheduleHydrate();
+            };
+            bindRehydrateOnRestore(window, refresh);
+            bindRehydrateOnActivate(window.document, refresh);
 
             const jq = (window as unknown as { jQuery?: JQueryLike }).jQuery;
             if (typeof jq === 'function') {
