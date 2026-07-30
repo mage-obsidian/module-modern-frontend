@@ -22,6 +22,12 @@ readonly class PackageFilePlugin
     private const EXCLUDED_THEME_CONFIG = 'theme\.config\.cjs';
     private const EXCLUDED_NODE_MODULES = 'node_modules/.*';
 
+    // Less/Sass sources must be filtered out too: PoolPlugin disables the
+    // css/less/scss pre-processor pool for enabled themes, so any source left in
+    // the package can never be compiled and the deploy logs an unresolvable
+    // asset (e.g. Magento_PageBuilder's css/source/hljs/hljs.less).
+    private const EXCLUDED_PREPROCESSOR_SOURCES = '.*\.(?:less|scss)';
+
     public function __construct(
         private ConfigManagerInterface $configManager
     ) {
@@ -134,6 +140,7 @@ readonly class PackageFilePlugin
                 $quotedPath = preg_quote($path, '#');
                 $patterns[] = $quotedPath . self::EXCLUDED_MODULE_CONFIG;
                 $patterns[] = $quotedPath . self::EXCLUDED_CSS;
+                $patterns[] = $quotedPath . self::EXCLUDED_PREPROCESSOR_SOURCES;
                 $patterns[] = $quotedPath . ConfigInterface::VUE_COMPONENTS_PATH . '/.*';
                 $patterns[] = $quotedPath . ConfigInterface::JS_PATH . '/.*';
                 $patterns[] = $quotedPath . self::EXCLUDED_NODE_MODULES;
@@ -142,6 +149,7 @@ readonly class PackageFilePlugin
             $quotedModule = preg_quote($module, '#');
             $patterns[] = $quotedModule . '/web/' . self::EXCLUDED_MODULE_CONFIG;
             $patterns[] = $quotedModule . '/web/' . self::EXCLUDED_CSS;
+            $patterns[] = $quotedModule . '/web/' . self::EXCLUDED_PREPROCESSOR_SOURCES;
             $patterns[] = $quotedModule . '/web/' . ConfigInterface::VUE_COMPONENTS_PATH . '/.*';
             $patterns[] = $quotedModule . '/web/' . ConfigInterface::JS_PATH . '/.*';
             $patterns[] = $quotedModule . '/web/' . self::EXCLUDED_NODE_MODULES;
@@ -149,6 +157,7 @@ readonly class PackageFilePlugin
             $quotedTheme = preg_quote($theme, '#');
             $patterns[] = $quotedTheme . '/web/' . self::EXCLUDED_THEME_CONFIG;
             $patterns[] = $quotedTheme . '/web/' . self::EXCLUDED_CSS;
+            $patterns[] = $quotedTheme . '/web/' . self::EXCLUDED_PREPROCESSOR_SOURCES;
             $patterns[] = $quotedTheme . '/web/' . self::EXCLUDED_NODE_MODULES;
         }
 

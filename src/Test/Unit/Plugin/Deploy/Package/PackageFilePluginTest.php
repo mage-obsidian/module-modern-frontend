@@ -176,6 +176,84 @@ class PackageFilePluginTest extends TestCase
     }
 
     /**
+     * A Less source left in the package of an enabled theme can never be
+     * compiled (PoolPlugin disables the css/less/scss pool there), so the deploy
+     * fails to resolve the derived .css file. Keep it out of the package.
+     */
+    public function testExcludesThirdPartyModuleLessUnderEnabledTheme(): void
+    {
+        $configManager = $this->createMock(ConfigManagerInterface::class);
+        $configManager->method('isModuleEnabled')->with('Magento_PageBuilder')->willReturn(false);
+        $configManager->method('isThemeEnabled')->with('MageObsidian/theme-base')->willReturn(true);
+
+        $file = $this->file(
+            'Magento_PageBuilder',
+            '',
+            '/abs/magento/module-page-builder/view/base/web/css/source/hljs/hljs.less',
+            'base'
+        );
+        $package = $this->package('MageObsidian/theme-base');
+
+        $proceed = function () {
+            $this->fail('proceed() must not be called for an excluded file');
+        };
+
+        $this->assertNull($this->plugin($configManager)->aroundSetPackage($file, $proceed, $package));
+    }
+
+    /**
+     * The same Less source still compiles for a legacy theme, which does own a
+     * Less pipeline.
+     */
+    public function testKeepsThirdPartyModuleLessUnderLegacyTheme(): void
+    {
+        $configManager = $this->createMock(ConfigManagerInterface::class);
+        $configManager->method('isModuleEnabled')->with('Magento_PageBuilder')->willReturn(false);
+        $configManager->method('isThemeEnabled')->with('Magento/luma')->willReturn(false);
+
+        $file = $this->file(
+            'Magento_PageBuilder',
+            '',
+            '/abs/magento/module-page-builder/view/base/web/css/source/hljs/hljs.less',
+            'base'
+        );
+        $package = $this->package('Magento/luma');
+
+        $called = false;
+        $proceed = function () use (&$called) {
+            $called = true;
+            return 'kept';
+        };
+
+        $this->assertSame('kept', $this->plugin($configManager)->aroundSetPackage($file, $proceed, $package));
+        $this->assertTrue($called);
+    }
+
+    /**
+     * Same rule on the theme branch: an enabled theme's own Sass/Less sources
+     * belong to Vite, not to the native pipeline.
+     */
+    public function testExcludesEnabledThemeOwnPreprocessorSource(): void
+    {
+        $configManager = $this->createMock(ConfigManagerInterface::class);
+        $configManager->method('isModuleEnabled')->willReturn(false);
+        $configManager->method('isThemeEnabled')->with('MageObsidian/theme-base')->willReturn(true);
+
+        $file = $this->file(
+            '',
+            'MageObsidian/theme-base',
+            '/abs/theme-base/MageObsidian/theme-base/web/css/source/_extend.scss'
+        );
+        $package = $this->package('MageObsidian/theme-base');
+
+        $proceed = function () {
+            $this->fail('proceed() must not be called for an excluded file');
+        };
+
+        $this->assertNull($this->plugin($configManager)->aroundSetPackage($file, $proceed, $package));
+    }
+
+    /**
      * An enabled MageObsidian module's own static asset also deploys under an
      * enabled MageObsidian theme (documents the scenario from the bug report).
      */
