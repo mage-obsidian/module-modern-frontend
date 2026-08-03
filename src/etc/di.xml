@@ -97,6 +97,20 @@
             name="deploy_vite_content"
             type="MageObsidian\ModernFrontend\Plugin\Deploy\Service\DeployViteContentPlugin"
         />
+        <!--
+          The deploy cannot be trusted to report a partial run: Queue::process()
+          returns a status that is never reassigned, so workers that die still
+          leave it exiting 0. This checks the result instead of the exit code.
+        -->
+        <plugin
+            name="verify_vite_content"
+            type="MageObsidian\ModernFrontend\Plugin\Deploy\Service\VerifyViteContentPlugin"
+        />
+    </type>
+    <type name="MageObsidian\ModernFrontend\Model\Deploy\ViteOutputVerifier">
+        <arguments>
+            <argument name="driver" xsi:type="object">Magento\Framework\Filesystem\Driver\File</argument>
+        </arguments>
     </type>
     <type name="MageObsidian\ModernFrontend\Plugin\Deploy\Service\DeployViteContentPlugin">
         <arguments>
