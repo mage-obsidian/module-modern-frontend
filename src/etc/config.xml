@@ -19,6 +19,7 @@
             </seo>
             <checkout>
                 <layout_mode>stepped</layout_mode>
+                <cacheable_shell>0</cacheable_shell>
             </checkout>
             <storefront>
                 <optimistic_ui>1</optimistic_ui>

@@ -99,6 +99,13 @@
                     <source_model>MageObsidian\ModernFrontend\Model\Config\Source\CheckoutLayout</source_model>
                     <config_path>mage_obsidian/checkout/layout_mode</config_path>
                 </field>
+                <field id="cacheable_shell" translate="label comment" type="select" sortOrder="20"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Cacheable Checkout Shell</label>
+                    <comment>Serve the checkout page from the full-page cache, delivering the cart through customer-data instead of inlining it. Off by default. Verify your payment and shipping extensions before enabling; append ?obsidian_shell=0 to any checkout URL to bypass it.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <config_path>mage_obsidian/checkout/cacheable_shell</config_path>
+                </field>
             </group>
             <group id="storefront" translate="label" type="text" sortOrder="50"
                    showInDefault="1" showInWebsite="1" showInStore="1">

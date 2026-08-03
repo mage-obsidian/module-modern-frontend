@@ -30,6 +30,7 @@ class ConfigProvider implements ArgumentInterface
     public const string STRUCTURED_DATA_ENABLED = self::SEO_PATH . 'structured_data_enabled';
     public const string CHECKOUT_PATH = self::ROOT_PATH . 'checkout/';
     public const string CHECKOUT_LAYOUT_MODE = self::CHECKOUT_PATH . 'layout_mode';
+    public const string CHECKOUT_CACHEABLE_SHELL = self::CHECKOUT_PATH . 'cacheable_shell';
     public const string STOREFRONT_PATH = self::ROOT_PATH . 'storefront/';
     public const string STOREFRONT_OPTIMISTIC_UI = self::STOREFRONT_PATH . 'optimistic_ui';
     public const string CART_SUMMARY_USE_QTY = 'checkout/cart_link/use_qty';
@@ -81,6 +82,22 @@ class ConfigProvider implements ArgumentInterface
     {
         $mode = (string)$this->scopeConfig->getValue(self::CHECKOUT_LAYOUT_MODE, ScopeInterface::SCOPE_STORE);
         return $mode !== '' ? $mode : Source\CheckoutLayout::STEPPED;
+    }
+
+    /**
+     * Whether the checkout page is served as a cacheable shell, with the quote
+     * delivered through customer-data instead of inlined.
+     *
+     * Off by default: turning it on changes what the full-page cache stores for
+     * this URL, and a mistake there shows one shopper another's cart. Merchants
+     * opt in once they have verified their own payment and shipping extensions
+     * against it.
+     *
+     * @return bool
+     */
+    public function isCheckoutShellCacheable(): bool
+    {
+        return $this->scopeConfig->isSetFlag(self::CHECKOUT_CACHEABLE_SHELL, ScopeInterface::SCOPE_STORE);
     }
 
     /**
