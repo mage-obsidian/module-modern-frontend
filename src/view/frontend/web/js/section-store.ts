@@ -203,6 +203,16 @@ export function createSectionStore(config: SectionStoreConfig) {
         }
 
         /**
+         * Whether the stored snapshot predates the version the server advertises.
+         * A partial reload refreshes the sections it names and leaves the marker
+         * behind, so the rest stay readable but out of date — a consumer that acts
+         * on their contents (rather than just displaying them) has to know.
+         */
+        function isStale(): boolean {
+            return needsHydration(sections.value, readSyncedVersion(), cookieVersion());
+        }
+
+        /**
          * Hydrate from the server on first use when the cache is empty or the
          * version has moved. A no-op on steady-state loads, so warm pages stay
          * request-free. As a backstop, expirable sections that have aged past
@@ -220,7 +230,7 @@ export function createSectionStore(config: SectionStoreConfig) {
                 reload([]);
                 return;
             }
-            if (needsHydration(sections.value, readSyncedVersion(), cookieVersion())) {
+            if (isStale()) {
                 reload([]);
                 return;
             }
@@ -294,7 +304,7 @@ export function createSectionStore(config: SectionStoreConfig) {
         subscribe();
         scheduleHydrate();
 
-        return { sections, section, sync, reload, patch, snapshot, restore };
+        return { sections, section, isStale, sync, reload, patch, snapshot, restore };
     });
 }
 
