@@ -41,6 +41,7 @@
             <exclude>src/Test/Unit/Service/Cms/TailwindCliTest.php</exclude>
             <exclude>src/Test/Unit/Service/Cms/DeltaStylesheetTest.php</exclude>
             <exclude>src/Test/Unit/Plugin/Deploy/Service/VerifyViteContentPluginTest.php</exclude>
+            <exclude>src/Test/Unit/Model/Deploy/ViteOutputVerifierTest.php</exclude>
         </testsuite>
     </testsuites>
 </phpunit>
