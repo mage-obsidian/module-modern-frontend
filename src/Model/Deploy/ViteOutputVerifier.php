@@ -36,20 +36,35 @@ class ViteOutputVerifier
     public function __construct(
         private readonly ConfigManagerInterface $configManager,
         private readonly DirectoryList $directoryList,
-        private readonly DriverInterface $driver
+        private readonly DriverInterface $driver,
+        private readonly DeployTargets $targets
     ) {
     }
 
     /**
-     * @param string[] $locales
+     * The deploy options are taken whole rather than a locale list: they carry
+     * sentinels (`all`, `none`) and exclusion rules that decide which packages
+     * were written at all, and checking paths the run never meant to produce
+     * reports a healthy deploy as a broken one.
+     *
+     * @param array<string, mixed> $options
      * @return array<string, string[]> "<theme>@<locale>" => paths relative to generated/
      */
-    public function findMissing(array $locales): array
+    public function findMissing(array $options): array
     {
+        $locales = $this->targets->locales($options);
+        if ($locales === []) {
+            return [];
+        }
+
         $staticRoot = $this->directoryList->getPath(DirectoryList::STATIC_VIEW);
         $missing = [];
 
         foreach ($this->configManager->get()['themes'] ?? [] as $theme => $definition) {
+            if (!$this->targets->includesTheme((string)$theme, $options)) {
+                continue;
+            }
+
             $source = $definition['src'] . '/' . self::WEB_PATH . '/' . ConfigInterface::GENERATED_PATH;
             if (!$this->driver->isDirectory($source)) {
                 continue;

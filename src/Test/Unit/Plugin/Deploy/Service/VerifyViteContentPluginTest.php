@@ -11,50 +11,64 @@ namespace MageObsidian\ModernFrontend\Test\Unit\Plugin\Deploy\Service;
 
 use Magento\Deploy\Console\DeployStaticOptions;
 use Magento\Deploy\Service\DeployStaticContent;
-use Magento\Framework\Exception\LocalizedException;
 use MageObsidian\ModernFrontend\Model\Deploy\ViteOutputVerifier;
 use MageObsidian\ModernFrontend\Plugin\Deploy\Service\VerifyViteContentPlugin;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Console\Output\BufferedOutput;
 
 class VerifyViteContentPluginTest extends TestCase
 {
-    public function testLetsACompleteDeployThrough(): void
+    private BufferedOutput $output;
+
+    protected function setUp(): void
+    {
+        $this->output = new BufferedOutput();
+    }
+
+    public function testSaysNothingAboutACompleteDeploy(): void
     {
         $plugin = $this->plugin(missing: []);
 
-        $this->assertNull($plugin->afterDeploy($this->subject(), null, $this->options()));
+        $plugin->afterDeploy($this->subject(), null, $this->options());
+
+        $this->assertSame('', $this->output->fetch());
     }
 
     /**
      * The whole point: a deploy whose workers died exits 0, so the only way to
-     * stop a storefront being served without its JavaScript is to check the
-     * result and refuse to call it a success.
+     * learn that a storefront is being served without its JavaScript is to
+     * check the result and say so.
      */
-    public function testFailsTheDeployWhenTheBundleIsMissing(): void
+    public function testWarnsWhenTheBundleIsMissing(): void
     {
         $plugin = $this->plugin(missing: [
             'MageObsidian/default@en_US' => ['lib/vue.js', 'MageObsidian_Storefront/js/nav.js'],
         ]);
 
-        $this->expectException(LocalizedException::class);
-        $this->expectExceptionMessageMatches('/MageObsidian\/default@en_US/');
-
         $plugin->afterDeploy($this->subject(), null, $this->options());
+
+        $this->assertStringContainsString('MageObsidian/default@en_US', $this->output->fetch());
     }
 
-    public function testNamesAFileSoTheFailureCanBeChased(): void
+    public function testNamesAFileSoTheGapCanBeChased(): void
     {
         $plugin = $this->plugin(missing: ['MageObsidian/default@en_US' => ['lib/vue.js']]);
 
-        try {
-            $plugin->afterDeploy($this->subject(), null, $this->options());
-            $this->fail('Expected the deploy to be rejected.');
-        } catch (LocalizedException $e) {
-            $this->assertStringContainsString('lib/vue.js', $e->getMessage());
-        }
+        $plugin->afterDeploy($this->subject(), null, $this->options());
+
+        $this->assertStringContainsString('lib/vue.js', $this->output->fetch());
     }
 
-    // Nothing was built, so there is nothing to verify and no reason to fail.
+    // An incomplete bundle is worth reporting, but not worth undoing a deploy
+    // that Magento itself considers finished.
+    public function testLetsTheDeployFinishRegardless(): void
+    {
+        $plugin = $this->plugin(missing: ['MageObsidian/default@en_US' => ['lib/vue.js']]);
+
+        $this->assertSame('deployed', $plugin->afterDeploy($this->subject(), 'deployed', $this->options()));
+    }
+
+    // Nothing was built, so there is nothing to verify and nothing to report.
     public function testSkipsWhenJavascriptWasExcluded(): void
     {
         $verifier = $this->createMock(ViteOutputVerifier::class);
@@ -63,7 +77,7 @@ class VerifyViteContentPluginTest extends TestCase
         $options = $this->options();
         $options[DeployStaticOptions::NO_JAVASCRIPT] = true;
 
-        (new VerifyViteContentPlugin($verifier))->afterDeploy($this->subject(), null, $options);
+        $this->pluginWith($verifier)->afterDeploy($this->subject(), null, $options);
     }
 
     public function testSkipsWhenTheFrontendAreaIsNotBeingDeployed(): void
@@ -74,21 +88,21 @@ class VerifyViteContentPluginTest extends TestCase
         $options = $this->options();
         $options[DeployStaticOptions::AREA] = ['adminhtml'];
 
-        (new VerifyViteContentPlugin($verifier))->afterDeploy($this->subject(), null, $options);
+        $this->pluginWith($verifier)->afterDeploy($this->subject(), null, $options);
     }
 
-    public function testChecksTheLocalesThatWereDeployed(): void
+    /**
+     * The options carry sentinels and exclusion rules that decide what was
+     * deployed at all, so the verifier gets them whole rather than pre-digested.
+     */
+    public function testHandsTheDeployOptionsToTheVerifier(): void
     {
-        $verifier = $this->createMock(ViteOutputVerifier::class);
-        $verifier->expects($this->once())
-            ->method('findMissing')
-            ->with(['en_US', 'es_ES'])
-            ->willReturn([]);
-
         $options = $this->options();
-        $options[DeployStaticOptions::LANGUAGE] = ['en_US', 'es_ES'];
 
-        (new VerifyViteContentPlugin($verifier))->afterDeploy($this->subject(), null, $options);
+        $verifier = $this->createMock(ViteOutputVerifier::class);
+        $verifier->expects($this->once())->method('findMissing')->with($options)->willReturn([]);
+
+        $this->pluginWith($verifier)->afterDeploy($this->subject(), null, $options);
     }
 
     /**
@@ -99,7 +113,12 @@ class VerifyViteContentPluginTest extends TestCase
         $verifier = $this->createMock(ViteOutputVerifier::class);
         $verifier->method('findMissing')->willReturn($missing);
 
-        return new VerifyViteContentPlugin($verifier);
+        return $this->pluginWith($verifier);
+    }
+
+    private function pluginWith(ViteOutputVerifier $verifier): VerifyViteContentPlugin
+    {
+        return new VerifyViteContentPlugin($verifier, $this->output);
     }
 
     private function subject(): DeployStaticContent
@@ -116,7 +135,7 @@ class VerifyViteContentPluginTest extends TestCase
             DeployStaticOptions::NO_JAVASCRIPT => false,
             DeployStaticOptions::AREA => ['all'],
             DeployStaticOptions::EXCLUDE_AREA => [],
-            DeployStaticOptions::LANGUAGE => ['en_US'],
+            DeployStaticOptions::LANGUAGE => ['all'],
         ];
     }
 }

@@ -11,12 +11,12 @@ namespace MageObsidian\ModernFrontend\Plugin\Deploy\Service;
 
 use Magento\Deploy\Console\DeployStaticOptions;
 use Magento\Deploy\Service\DeployStaticContent;
-use Magento\Framework\Exception\LocalizedException;
 use MageObsidian\ModernFrontend\Model\Deploy\ViteOutputVerifier;
+use Symfony\Component\Console\Output\ConsoleOutputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
 
 /**
- * Refuses to call a static deploy successful when the Vite bundle did not make
- * it to `pub/static`.
+ * Warns when the Vite bundle did not make it to `pub/static`.
  *
  * `setup:static-content:deploy` cannot report this on its own: a worker killed
  * mid-flight is marked completed, its exit status is logged as info and never
@@ -31,8 +31,10 @@ class VerifyViteContentPlugin
      */
     private const SAMPLE_SIZE = 5;
 
-    public function __construct(private readonly ViteOutputVerifier $verifier)
-    {
+    public function __construct(
+        private readonly ViteOutputVerifier $verifier,
+        private readonly OutputInterface $output
+    ) {
     }
 
     /**
@@ -40,7 +42,6 @@ class VerifyViteContentPlugin
      * @param mixed $result
      * @param array $options
      * @return mixed
-     * @throws LocalizedException
      * @SuppressWarnings(PHPMD.UnusedFormalParameter)
      */
     public function afterDeploy(DeployStaticContent $subject, $result, array $options)
@@ -53,17 +54,30 @@ class VerifyViteContentPlugin
             return $result;
         }
 
-        $missing = $this->verifier->findMissing($options[DeployStaticOptions::LANGUAGE] ?? []);
+        $missing = $this->verifier->findMissing($options);
         if ($missing !== []) {
-            throw new LocalizedException(__(
-                'Static content deployment did not publish the Vite build. %1. '
+            $this->warn(__(
+                'Static content deployment did not publish the whole Vite build. %1. '
                 . 'This usually means a deploy worker died: the command still exits 0, '
                 . 'so re-run setup:static-content:deploy and check for killed processes.',
                 $this->describe($missing)
-            ));
+            )->render());
         }
 
         return $result;
+    }
+
+    /**
+     * Sent to stderr so the warning survives a deploy whose stdout is piped to
+     * a log — the runs most likely to lose a worker are the unattended ones.
+     */
+    private function warn(string $message): void
+    {
+        $output = $this->output instanceof ConsoleOutputInterface
+            ? $this->output->getErrorOutput()
+            : $this->output;
+
+        $output->writeln('<comment>' . $message . '</comment>');
     }
 
     /**

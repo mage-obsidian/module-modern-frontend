@@ -100,12 +100,18 @@
         <!--
           The deploy cannot be trusted to report a partial run: Queue::process()
           returns a status that is never reassigned, so workers that die still
-          leave it exiting 0. This checks the result instead of the exit code.
+          leave it exiting 0. This checks the result instead of the exit code
+          and warns about whatever never reached pub/static.
         -->
         <plugin
             name="verify_vite_content"
             type="MageObsidian\ModernFrontend\Plugin\Deploy\Service\VerifyViteContentPlugin"
         />
+    </type>
+    <type name="MageObsidian\ModernFrontend\Plugin\Deploy\Service\VerifyViteContentPlugin">
+        <arguments>
+            <argument name="output" xsi:type="object">Symfony\Component\Console\Output\ConsoleOutput</argument>
+        </arguments>
     </type>
     <type name="MageObsidian\ModernFrontend\Model\Deploy\ViteOutputVerifier">
         <arguments>
