@@ -339,4 +339,18 @@ class ViteResolverTest extends TestCase
             $svg
         );
     }
+
+    /**
+     * An icon inside an island's server markup is hydrated against a component
+     * that renders no whitespace, and the indentation alone makes Vue reject the
+     * subtree — so the markup has to arrive on one line.
+     */
+    public function testGetHeroIconEmitsMarkupWithoutWhitespaceBetweenTags(): void
+    {
+        $svg = $this->buildResolver()->getHeroIcon('check', 'outline', '20', 'h-5 w-5');
+
+        $this->assertSame($svg, trim($svg));
+        $this->assertDoesNotMatchRegularExpression('/>\s+</', $svg);
+        $this->assertStringContainsString('class="h-5 w-5"', $svg);
+    }
 }

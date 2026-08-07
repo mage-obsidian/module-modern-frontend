@@ -338,11 +338,17 @@ class ViteResolver implements ArgumentInterface
             ? ''
             : ' class="' . htmlspecialchars($class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"';
 
-        return <<<HTML
-            <svg width="$size" height="$size" viewBox="0 0 $size $size" $paint xmlns="http://www.w3.org/2000/svg" aria-hidden="true"$classAttr>
-                <use href="$url#icon"></use>
-            </svg>
-        HTML;
+        // No indentation or line breaks: an icon inside an island's server
+        // markup is hydrated against a component that renders none, and the
+        // whitespace alone is enough for Vue to reject the subtree.
+        return sprintf(
+            '<svg width="%1$s" height="%1$s" viewBox="0 0 %1$s %1$s" %2$s '
+                . 'xmlns="http://www.w3.org/2000/svg" aria-hidden="true"%3$s><use href="%4$s#icon"></use></svg>',
+            $size,
+            $paint,
+            $classAttr,
+            $url
+        );
     }
 
     /**
