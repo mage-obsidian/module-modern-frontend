@@ -227,7 +227,13 @@ export function createSectionStore(config: SectionStoreConfig) {
                 sections.value = {};
                 writeStorage({}, '');
                 armSessionCookie();
-                reload([]);
+                // Armed again once the response has landed: a section load that
+                // opens a fresh PHP session answers with a deletion of this very
+                // marker, so arming only beforehand leaves it gone. The next page
+                // would then read a flipped session, empty the store a second
+                // time, and blank every island fed by it until the refetch
+                // returned.
+                void reload([]).then(armSessionCookie);
                 return;
             }
             if (isStale()) {
