@@ -29,6 +29,7 @@ import {
     needsHydration,
     sessionInvalidated,
     expiredSectionNames,
+    takeSectionPrefetch,
     type SectionData,
     type SectionMap,
 } from 'mage-obsidian/runtime/sectionStoreCore.ts';
@@ -149,23 +150,31 @@ export function createSectionStore(config: SectionStoreConfig) {
             return selectSection(sections.value, name);
         }
 
+        async function fetchSections(url: string): Promise<unknown> {
+            const response = await fetch(url, {
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+
+            return response.ok ? await response.json() : null;
+        }
+
         /**
          * Explicitly (re)load sections from the never-cached endpoint and merge
-         * the result. An empty `names` reloads all sections.
+         * the result. An empty `names` reloads all sections. A response the page
+         * already put in flight for exactly these sections is used instead of a
+         * second request.
          */
         async function reload(names: string[] = [], options: { force?: boolean } = {}): Promise<void> {
             const url = buildSectionLoadUrl(endpoint, names, { forceNewTimestamp: options.force ?? true });
+            const prefetched = takeSectionPrefetch(names);
             await events.dispatch(LifecycleEvent.SectionReloadBefore, { names } satisfies SectionEvent);
             try {
-                const response = await fetch(url, {
-                    credentials: 'same-origin',
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                });
-                if (!response.ok) {
+                const incoming = await (prefetched ?? fetchSections(url));
+                if (incoming === null || incoming === undefined) {
                     await events.dispatch(LifecycleEvent.SectionReloadFailed, { names } satisfies SectionEvent);
                     return;
                 }
-                const incoming = await response.json();
                 sections.value = mergeSections(sections.value, incoming);
                 writeStorage(sections.value, names.length === 0 ? cookieVersion() : undefined);
                 await events.dispatch(LifecycleEvent.SectionReloadAfter, {
