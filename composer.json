@@ -47,5 +47,8 @@
         "psr-4": {
             "MageObsidian\\ModernFrontend\\": "src/"
         }
+    },
+    "conflict": {
+        "mage-obsidian/component-modern-frontend": "<2.4.5"
     }
 }
