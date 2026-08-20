@@ -269,11 +269,11 @@ class ViteResolverTest extends TestCase
         $html = $this->buildResolver()->renderVueComponent('Vendor::Card', [], true);
 
         $this->assertStringContainsString(
-            '<link rel="modulepreload" href="/static/vite_generated/Vendor/components/Card.js"/>',
+            '<link rel="modulepreload" href="/static/vite_generated/Vendor/components/Card.js" fetchpriority="low"/>',
             $html
         );
         $this->assertStringContainsString(
-            '<link rel="modulepreload" href="/static/vite_generated/lib/pinia.js"/>',
+            '<link rel="modulepreload" href="/static/vite_generated/lib/pinia.js" fetchpriority="low"/>',
             $html
         );
         // Hints must precede the marker that the bootstrap dynamically imports.
@@ -290,6 +290,19 @@ class ViteResolverTest extends TestCase
         $html = $this->buildResolver()->renderVueComponent('Vendor::Card', []);
 
         $this->assertStringNotContainsString('<link', $html);
+    }
+
+    public function testEveryEagerPreloadHintCarriesLowFetchPriority(): void
+    {
+        $this->preloadFiles = ['Vendor/components/Card.js', 'lib/pinia.js', 'lib/vue.js'];
+
+        $html = $this->buildResolver()->renderVueComponent('Vendor::Card', [], true);
+
+        $this->assertSame(
+            substr_count($html, '<link rel="modulepreload"'),
+            substr_count($html, 'fetchpriority="low"'),
+            'island preload hints must never outrank the render-blocking stylesheet'
+        );
     }
 
     public function testEagerPreloadIsDeduplicatedAcrossIslandsInTheSameRequest(): void

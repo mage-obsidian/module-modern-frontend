@@ -262,7 +262,7 @@ class ViteResolver implements ArgumentInterface
         $html = '';
         foreach ($this->eagerIslandRegistry->take($urls) as $url) {
             $href = htmlspecialchars($url, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-            $html .= "<link rel=\"modulepreload\" href=\"{$href}\"/>";
+            $html .= "<link rel=\"modulepreload\" href=\"{$href}\" fetchpriority=\"low\"/>";
         }
 
         return $html;
