@@ -150,6 +150,10 @@ export function createSectionStore(config: SectionStoreConfig) {
             return selectSection(sections.value, name);
         }
 
+        function isSectionMap(value: unknown): value is SectionMap {
+            return !!value && typeof value === 'object' && !Array.isArray(value);
+        }
+
         async function fetchSections(url: string): Promise<unknown> {
             const response = await fetch(url, {
                 credentials: 'same-origin',
@@ -171,7 +175,7 @@ export function createSectionStore(config: SectionStoreConfig) {
             await events.dispatch(LifecycleEvent.SectionReloadBefore, { names } satisfies SectionEvent);
             try {
                 const incoming = await (prefetched ?? fetchSections(url));
-                if (incoming === null || incoming === undefined) {
+                if (!isSectionMap(incoming)) {
                     await events.dispatch(LifecycleEvent.SectionReloadFailed, { names } satisfies SectionEvent);
                     return;
                 }
@@ -179,7 +183,7 @@ export function createSectionStore(config: SectionStoreConfig) {
                 writeStorage(sections.value, names.length === 0 ? cookieVersion() : undefined);
                 await events.dispatch(LifecycleEvent.SectionReloadAfter, {
                     names,
-                    changed: incoming && typeof incoming === 'object' ? Object.keys(incoming) : [],
+                    changed: Object.keys(incoming),
                 } satisfies SectionEvent);
             } catch {
                 // Keep the current snapshot; section data is never page-critical.
