@@ -11,6 +11,8 @@ namespace MageObsidian\ModernFrontend\Test\Unit\Plugin\Deploy\Service;
 
 use Magento\Deploy\Console\DeployStaticOptions;
 use Magento\Deploy\Service\DeployStaticContent;
+use MageObsidian\ModernFrontend\Model\Deploy\ViteOutputPublisher;
+use MageObsidian\ModernFrontend\Model\Deploy\ViteOutputTarget;
 use MageObsidian\ModernFrontend\Model\Deploy\ViteOutputVerifier;
 use MageObsidian\ModernFrontend\Plugin\Deploy\Service\VerifyViteContentPlugin;
 use PHPUnit\Framework\TestCase;
@@ -27,7 +29,7 @@ class VerifyViteContentPluginTest extends TestCase
 
     public function testSaysNothingAboutACompleteDeploy(): void
     {
-        $plugin = $this->plugin(missing: []);
+        $plugin = $this->plugin(outdated: []);
 
         $plugin->afterDeploy($this->subject(), null, $this->options());
 
@@ -35,35 +37,69 @@ class VerifyViteContentPluginTest extends TestCase
     }
 
     /**
-     * The whole point: a deploy whose workers died exits 0, so the only way to
-     * learn that a storefront is being served without its JavaScript is to
-     * check the result and say so.
+     * The quiet failure: the deploy skipped a file that already existed, so the
+     * storefront keeps serving the previous build. Nothing 404s, so reporting is
+     * not enough — the file has to be put where the deploy should have put it.
      */
-    public function testWarnsWhenTheBundleIsMissing(): void
+    public function testPublishesWhatTheDeployLeftOutOfDate(): void
     {
-        $plugin = $this->plugin(missing: [
-            'MageObsidian/default@en_US' => ['lib/vue.js', 'MageObsidian_Storefront/js/nav.js'],
-        ]);
+        $target = $this->target(['css/style.css', 'lib/vue.js']);
 
-        $plugin->afterDeploy($this->subject(), null, $this->options());
+        $publisher = $this->createMock(ViteOutputPublisher::class);
+        $publisher->expects($this->once())->method('publish')->with($target)->willReturn([]);
 
-        $this->assertStringContainsString('MageObsidian/default@en_US', $this->output->fetch());
+        $this->pluginWith($this->verifier([$target->label() => $target]), $publisher)
+            ->afterDeploy($this->subject(), null, $this->options());
+
+        $this->assertStringContainsString('published 2 Vite file(s)', $this->output->fetch());
     }
 
-    public function testNamesAFileSoTheGapCanBeChased(): void
+    /**
+     * The other failure: a deploy whose workers died exits 0, so the only way to
+     * learn that a storefront is being served without its JavaScript is to check
+     * the result and say so.
+     */
+    public function testWarnsAboutWhatItCouldNotPublishEither(): void
     {
-        $plugin = $this->plugin(missing: ['MageObsidian/default@en_US' => ['lib/vue.js']]);
+        $target = $this->target(['lib/vue.js', 'MageObsidian_Storefront/js/nav.js']);
+
+        $plugin = $this->pluginWith(
+            $this->verifier([$target->label() => $target]),
+            $this->failingPublisher(['lib/vue.js'])
+        );
 
         $plugin->afterDeploy($this->subject(), null, $this->options());
 
-        $this->assertStringContainsString('lib/vue.js', $this->output->fetch());
+        $written = $this->output->fetch();
+        $this->assertStringContainsString('MageObsidian/default@en_US', $written);
+        $this->assertStringContainsString('lib/vue.js', $written);
+    }
+
+    // What was repaired is not what failed; a partial repair must not read as a
+    // total one, nor the other way round.
+    public function testCountsOnlyTheFilesItActuallyPublished(): void
+    {
+        $target = $this->target(['a.js', 'b.js', 'c.js']);
+
+        $plugin = $this->pluginWith(
+            $this->verifier([$target->label() => $target]),
+            $this->failingPublisher(['c.js'])
+        );
+
+        $plugin->afterDeploy($this->subject(), null, $this->options());
+
+        $this->assertStringContainsString('published 2 Vite file(s)', $this->output->fetch());
     }
 
     // An incomplete bundle is worth reporting, but not worth undoing a deploy
     // that Magento itself considers finished.
     public function testLetsTheDeployFinishRegardless(): void
     {
-        $plugin = $this->plugin(missing: ['MageObsidian/default@en_US' => ['lib/vue.js']]);
+        $target = $this->target(['lib/vue.js']);
+        $plugin = $this->pluginWith(
+            $this->verifier([$target->label() => $target]),
+            $this->failingPublisher(['lib/vue.js'])
+        );
 
         $this->assertSame('deployed', $plugin->afterDeploy($this->subject(), 'deployed', $this->options()));
     }
@@ -72,7 +108,7 @@ class VerifyViteContentPluginTest extends TestCase
     public function testSkipsWhenJavascriptWasExcluded(): void
     {
         $verifier = $this->createMock(ViteOutputVerifier::class);
-        $verifier->expects($this->never())->method('findMissing');
+        $verifier->expects($this->never())->method('findOutdated');
 
         $options = $this->options();
         $options[DeployStaticOptions::NO_JAVASCRIPT] = true;
@@ -83,7 +119,7 @@ class VerifyViteContentPluginTest extends TestCase
     public function testSkipsWhenTheFrontendAreaIsNotBeingDeployed(): void
     {
         $verifier = $this->createMock(ViteOutputVerifier::class);
-        $verifier->expects($this->never())->method('findMissing');
+        $verifier->expects($this->never())->method('findOutdated');
 
         $options = $this->options();
         $options[DeployStaticOptions::AREA] = ['adminhtml'];
@@ -100,25 +136,64 @@ class VerifyViteContentPluginTest extends TestCase
         $options = $this->options();
 
         $verifier = $this->createMock(ViteOutputVerifier::class);
-        $verifier->expects($this->once())->method('findMissing')->with($options)->willReturn([]);
+        $verifier->expects($this->once())->method('findOutdated')->with($options)->willReturn([]);
 
         $this->pluginWith($verifier)->afterDeploy($this->subject(), null, $options);
     }
 
     /**
-     * @param array<string, string[]> $missing
+     * @param string[] $files
      */
-    private function plugin(array $missing): VerifyViteContentPlugin
+    private function target(array $files): ViteOutputTarget
     {
-        $verifier = $this->createMock(ViteOutputVerifier::class);
-        $verifier->method('findMissing')->willReturn($missing);
-
-        return $this->pluginWith($verifier);
+        return new ViteOutputTarget(
+            'MageObsidian/default',
+            'en_US',
+            '/var/www/html/vendor/mage-obsidian/theme-default/web/generated',
+            '/var/www/html/pub/static/frontend/MageObsidian/default/en_US/generated',
+            $files
+        );
     }
 
-    private function pluginWith(ViteOutputVerifier $verifier): VerifyViteContentPlugin
+    /**
+     * @param array<string, ViteOutputTarget> $outdated
+     */
+    private function verifier(array $outdated): ViteOutputVerifier
     {
-        return new VerifyViteContentPlugin($verifier, $this->output);
+        $verifier = $this->createMock(ViteOutputVerifier::class);
+        $verifier->method('findOutdated')->willReturn($outdated);
+
+        return $verifier;
+    }
+
+    /**
+     * @param string[] $failing
+     */
+    private function failingPublisher(array $failing): ViteOutputPublisher
+    {
+        $publisher = $this->createMock(ViteOutputPublisher::class);
+        $publisher->method('publish')->willReturn($failing);
+
+        return $publisher;
+    }
+
+    /**
+     * @param array<string, ViteOutputTarget> $outdated
+     */
+    private function plugin(array $outdated): VerifyViteContentPlugin
+    {
+        return $this->pluginWith($this->verifier($outdated));
+    }
+
+    private function pluginWith(
+        ViteOutputVerifier $verifier,
+        ?ViteOutputPublisher $publisher = null
+    ): VerifyViteContentPlugin {
+        return new VerifyViteContentPlugin(
+            $verifier,
+            $publisher ?? $this->createMock(ViteOutputPublisher::class),
+            $this->output
+        );
     }
 
     private function subject(): DeployStaticContent

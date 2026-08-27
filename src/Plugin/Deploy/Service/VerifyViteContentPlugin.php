@@ -11,18 +11,27 @@ namespace MageObsidian\ModernFrontend\Plugin\Deploy\Service;
 
 use Magento\Deploy\Console\DeployStaticOptions;
 use Magento\Deploy\Service\DeployStaticContent;
+use MageObsidian\ModernFrontend\Model\Deploy\ViteOutputPublisher;
+use MageObsidian\ModernFrontend\Model\Deploy\ViteOutputTarget;
 use MageObsidian\ModernFrontend\Model\Deploy\ViteOutputVerifier;
 use Symfony\Component\Console\Output\ConsoleOutputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
- * Warns when the Vite bundle did not make it to `pub/static`.
+ * Puts the Vite bundle in `pub/static` when the deploy did not, and says so.
  *
  * `setup:static-content:deploy` cannot report this on its own: a worker killed
  * mid-flight is marked completed, its exit status is logged as info and never
  * propagated, and the command exits 0 with packages half-published. The symptom
  * is a storefront that answers 200 while every one of its modules 404s, which is
  * why an HTTP health check does not catch it either.
+ *
+ * The other half is quieter and does not 404 at all: Magento's publisher skips a
+ * destination that already exists, so a rebuilt bundle under a stable filename —
+ * the theme stylesheet, every enhancer, every island — keeps serving the copy
+ * published the first time. Repairing it here rather than only reporting it is
+ * the difference between a deploy that is correct and one that needs somebody to
+ * know to empty `pub/static` first.
  */
 class VerifyViteContentPlugin
 {
@@ -33,6 +42,7 @@ class VerifyViteContentPlugin
 
     public function __construct(
         private readonly ViteOutputVerifier $verifier,
+        private readonly ViteOutputPublisher $publisher,
         private readonly OutputInterface $output
     ) {
     }
@@ -54,13 +64,40 @@ class VerifyViteContentPlugin
             return $result;
         }
 
-        $missing = $this->verifier->findMissing($options);
-        if ($missing !== []) {
+        $outdated = $this->verifier->findOutdated($options);
+        if ($outdated === []) {
+            return $result;
+        }
+
+        $republished = 0;
+        $failures = [];
+        foreach ($outdated as $target) {
+            $failed = $this->publisher->publish($target);
+            $republished += count($target->files) - count($failed);
+            if ($failed !== []) {
+                $failures[] = new ViteOutputTarget(
+                    $target->theme,
+                    $target->locale,
+                    $target->sourceDirectory,
+                    $target->targetDirectory,
+                    $failed
+                );
+            }
+        }
+
+        if ($republished > 0) {
+            $this->output->writeln(__(
+                '<info>Mage Obsidian published %1 Vite file(s) the static content deploy left out of date.</info>',
+                $republished
+            )->render());
+        }
+
+        if ($failures !== []) {
             $this->warn(__(
-                'Static content deployment did not publish the whole Vite build. %1. '
-                . 'This usually means a deploy worker died: the command still exits 0, '
-                . 'so re-run setup:static-content:deploy and check for killed processes.',
-                $this->describe($missing)
+                'Static content deployment did not publish the whole Vite build, and the missing files '
+                . 'could not be copied either. %1. This usually means a deploy worker died: the command '
+                . 'still exits 0, so re-run setup:static-content:deploy and check for killed processes.',
+                $this->describe($failures)
             )->render());
         }
 
@@ -81,19 +118,19 @@ class VerifyViteContentPlugin
     }
 
     /**
-     * @param array<string, string[]> $missing
+     * @param ViteOutputTarget[] $failures
      */
-    private function describe(array $missing): string
+    private function describe(array $failures): string
     {
         $described = [];
-        foreach ($missing as $target => $files) {
-            $sample = array_slice($files, 0, self::SAMPLE_SIZE);
+        foreach ($failures as $target) {
+            $sample = array_slice($target->files, 0, self::SAMPLE_SIZE);
             $described[] = sprintf(
                 '%s is missing %d file(s) (%s%s)',
-                $target,
-                count($files),
+                $target->label(),
+                count($target->files),
                 implode(', ', $sample),
-                count($files) > count($sample) ? ', …' : ''
+                count($target->files) > count($sample) ? ', …' : ''
             );
         }
 

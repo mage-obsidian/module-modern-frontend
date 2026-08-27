@@ -118,6 +118,11 @@
             <argument name="driver" xsi:type="object">Magento\Framework\Filesystem\Driver\File</argument>
         </arguments>
     </type>
+    <type name="MageObsidian\ModernFrontend\Model\Deploy\ViteOutputPublisher">
+        <arguments>
+            <argument name="driver" xsi:type="object">Magento\Framework\Filesystem\Driver\File</argument>
+        </arguments>
+    </type>
     <type name="MageObsidian\ModernFrontend\Plugin\Deploy\Service\DeployViteContentPlugin">
         <arguments>
             <argument name="output" xsi:type="object">Symfony\Component\Console\Output\ConsoleOutput</argument>

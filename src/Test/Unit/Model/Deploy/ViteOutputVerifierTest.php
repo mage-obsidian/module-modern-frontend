@@ -17,6 +17,7 @@ use Magento\Framework\App\Filesystem\DirectoryList;
 use Magento\Framework\Filesystem\DriverInterface;
 use MageObsidian\ModernFrontend\Api\ConfigManagerInterface;
 use MageObsidian\ModernFrontend\Model\Deploy\DeployTargets;
+use MageObsidian\ModernFrontend\Model\Deploy\ViteOutputTarget;
 use MageObsidian\ModernFrontend\Model\Deploy\ViteOutputVerifier;
 use PHPUnit\Framework\TestCase;
 
@@ -35,7 +36,7 @@ class ViteOutputVerifierTest extends TestCase
             published: ['lib/vue.js', 'MageObsidian_Storefront/js/nav.js']
         );
 
-        $this->assertSame([], $verifier->findMissing($this->options(['en_US'])));
+        $this->assertSame([], $verifier->findOutdated($this->options(['en_US'])));
     }
 
     public function testReportsTheFilesThatNeverReachedPubStatic(): void
@@ -45,11 +46,11 @@ class ViteOutputVerifierTest extends TestCase
             published: ['lib/vue.js']
         );
 
-        $missing = $verifier->findMissing($this->options(['en_US']));
+        $outdated = $verifier->findOutdated($this->options(['en_US']));
 
         $this->assertSame(
             ['MageObsidian/default@en_US' => ['MageObsidian_Storefront/js/nav.js']],
-            $missing
+            self::flatten($outdated)
         );
     }
 
@@ -63,7 +64,7 @@ class ViteOutputVerifierTest extends TestCase
 
         $this->assertSame(
             ['MageObsidian/default@en_US' => ['lib/vue.js']],
-            $verifier->findMissing($this->options(['en_US']))
+            self::flatten($verifier->findOutdated($this->options(['en_US'])))
         );
     }
 
@@ -79,7 +80,7 @@ class ViteOutputVerifierTest extends TestCase
 
         $this->assertSame(
             ['MageObsidian/default@es_ES' => ['lib/vue.js']],
-            $verifier->findMissing($this->options(['en_US', 'es_ES']))
+            self::flatten($verifier->findOutdated($this->options(['en_US', 'es_ES'])))
         );
     }
 
@@ -89,7 +90,7 @@ class ViteOutputVerifierTest extends TestCase
     {
         $verifier = $this->verifier(built: null, published: []);
 
-        $this->assertSame([], $verifier->findMissing($this->options(['en_US'])));
+        $this->assertSame([], $verifier->findOutdated($this->options(['en_US'])));
     }
 
     /**
@@ -105,7 +106,7 @@ class ViteOutputVerifierTest extends TestCase
             directories: ['lib']
         );
 
-        $this->assertSame([], $verifier->findMissing($this->options(['en_US'])));
+        $this->assertSame([], $verifier->findOutdated($this->options(['en_US'])));
     }
 
     /**
@@ -119,7 +120,7 @@ class ViteOutputVerifierTest extends TestCase
             published: ['lib/vue.js']
         );
 
-        $this->assertSame([], $verifier->findMissing($this->options(['en_US'])));
+        $this->assertSame([], $verifier->findOutdated($this->options(['en_US'])));
     }
 
     /**
@@ -138,7 +139,7 @@ class ViteOutputVerifierTest extends TestCase
 
         $this->assertSame(
             [],
-            $verifier->findMissing([DeployStaticOptions::LANGUAGE => ['all']])
+            $verifier->findOutdated([DeployStaticOptions::LANGUAGE => ['all']])
         );
     }
 
@@ -150,7 +151,7 @@ class ViteOutputVerifierTest extends TestCase
             targets: $this->realTargets(['en_US'])
         );
 
-        $this->assertSame([], $verifier->findMissing([]));
+        $this->assertSame([], $verifier->findOutdated([]));
     }
 
     /**
@@ -161,7 +162,7 @@ class ViteOutputVerifierTest extends TestCase
     {
         $verifier = $this->verifier(built: ['lib/vue.js'], published: [], targets: $this->realTargets([]));
 
-        $this->assertSame([], $verifier->findMissing([]));
+        $this->assertSame([], $verifier->findOutdated([]));
     }
 
     // Deploying one theme says nothing about the others, so demanding output
@@ -175,12 +176,12 @@ class ViteOutputVerifierTest extends TestCase
             targets: $this->realTargets(['en_US'])
         );
 
-        $missing = $verifier->findMissing([
+        $outdated = $verifier->findOutdated([
             DeployStaticOptions::LANGUAGE => ['en_US'],
             DeployStaticOptions::THEME => [self::THEME],
         ]);
 
-        $this->assertSame(['MageObsidian/default@en_US' => ['lib/vue.js']], $missing);
+        $this->assertSame(['MageObsidian/default@en_US' => ['lib/vue.js']], self::flatten($outdated));
     }
 
     public function testHandsTheDeployOptionsStraightToTheTargets(): void
@@ -196,7 +197,82 @@ class ViteOutputVerifierTest extends TestCase
 
         $verifier = $this->verifier(built: ['lib/vue.js'], published: ['lib/vue.js'], targets: $targets);
 
-        $this->assertSame([], $verifier->findMissing($options));
+        $this->assertSame([], $verifier->findOutdated($options));
+    }
+
+
+    /**
+     * The failure that hid a whole theme rewrite: `Publisher::publish()` returns
+     * the moment the destination exists, so a rebuilt file under a name that
+     * never changes stays on the copy published the first time. The storefront
+     * keeps answering 200 and keeps serving the previous bundle.
+     */
+    public function testReportsAPublishedFileTheBuildHasSinceRewritten(): void
+    {
+        $verifier = $this->verifier(
+            built: ['css/style.css'],
+            published: ['css/style.css'],
+            sizes: ['css/style.css' => [106919, 98313]]
+        );
+
+        $this->assertSame(
+            ['MageObsidian/default@en_US' => ['css/style.css']],
+            self::flatten($verifier->findOutdated($this->options(['en_US'])))
+        );
+    }
+
+    // Same size, but the build wrote it after the deploy published it.
+    public function testReportsAPublishedFileOlderThanItsSource(): void
+    {
+        $verifier = $this->verifier(
+            built: ['css/style.css'],
+            published: ['css/style.css'],
+            sizes: ['css/style.css' => [1024, 1024]],
+            times: ['css/style.css' => [200, 100]]
+        );
+
+        $this->assertSame(
+            ['MageObsidian/default@en_US' => ['css/style.css']],
+            self::flatten($verifier->findOutdated($this->options(['en_US'])))
+        );
+    }
+
+    // A file published from the build that produced it is not outdated, however
+    // long ago that was.
+    public function testLeavesAPublishedFileThatStillMatchesAlone(): void
+    {
+        $verifier = $this->verifier(
+            built: ['css/style.css'],
+            published: ['css/style.css'],
+            sizes: ['css/style.css' => [1024, 1024]],
+            times: ['css/style.css' => [100, 200]]
+        );
+
+        $this->assertSame([], $verifier->findOutdated($this->options(['en_US'])));
+    }
+
+    public function testCarriesThePathsNeededToRepublish(): void
+    {
+        $verifier = $this->verifier(built: ['lib/vue.js'], published: []);
+
+        $target = $verifier->findOutdated($this->options(['en_US']))['MageObsidian/default@en_US'];
+
+        $this->assertSame(self::SRC . '/web/generated', $target->sourceDirectory);
+        $this->assertSame(
+            self::ROOT . '/pub/static/frontend/' . self::THEME . '/en_US/generated',
+            $target->targetDirectory
+        );
+        $this->assertSame('en_US', $target->locale);
+        $this->assertSame(self::THEME, $target->theme);
+    }
+
+    /**
+     * @param array<string, ViteOutputTarget> $outdated
+     * @return array<string, string[]>
+     */
+    private static function flatten(array $outdated): array
+    {
+        return array_map(static fn (ViteOutputTarget $target): array => $target->files, $outdated);
     }
 
     /**
@@ -238,7 +314,9 @@ class ViteOutputVerifierTest extends TestCase
         ?array $publishedPerLocale = null,
         array $directories = [],
         ?DeployTargets $targets = null,
-        bool $withParentTheme = false
+        bool $withParentTheme = false,
+        array $sizes = [],
+        array $times = []
     ): ViteOutputVerifier {
         $themes = [self::THEME => ['src' => self::SRC, 'parent' => null]];
         if ($withParentTheme) {
@@ -289,6 +367,20 @@ class ViteOutputVerifierTest extends TestCase
                     }
                 }
                 return false;
+            }
+        );
+
+        $driver->method('stat')->willReturnCallback(
+            static function (string $path) use ($sourceDir, $sizes, $times): array {
+                foreach ($sizes as $file => [$source, $target]) {
+                    if ($path === $sourceDir . '/' . $file) {
+                        return ['size' => $source, 'mtime' => $times[$file][0] ?? 0];
+                    }
+                    if (str_ends_with($path, '/generated/' . $file)) {
+                        return ['size' => $target, 'mtime' => $times[$file][1] ?? 0];
+                    }
+                }
+                return ['size' => 0, 'mtime' => 0];
             }
         );
 

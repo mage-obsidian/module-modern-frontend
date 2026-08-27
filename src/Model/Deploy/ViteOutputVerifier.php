@@ -10,19 +10,31 @@ declare(strict_types=1);
 namespace MageObsidian\ModernFrontend\Model\Deploy;
 
 use Magento\Framework\App\Filesystem\DirectoryList;
+use Magento\Framework\Exception\FileSystemException;
 use Magento\Framework\Filesystem\DriverInterface;
 use MageObsidian\ModernFrontend\Api\ConfigManagerInterface;
 use MageObsidian\ModernFrontend\Api\Data\ConfigInterface;
 
 /**
- * Checks that the Vite bundle a theme built actually reached `pub/static`.
+ * Checks that the Vite bundle a theme built is the one sitting in `pub/static`.
  *
- * This exists because `setup:static-content:deploy` cannot be trusted to say so.
+ * This exists because `setup:static-content:deploy` cannot be trusted to say so,
+ * and it gets there two different ways.
+ *
  * `Magento\Deploy\Process\Queue::process()` returns a `$returnStatus` that is
  * initialised to 0 and never reassigned, and a worker killed mid-flight is still
  * marked `STATE_COMPLETED` — its exit status only ever reaches the log, as info.
  * So a deploy whose workers die leaves packages half-published and still exits 0,
  * which is how a storefront ends up served without a single line of JavaScript.
+ *
+ * The quieter one is `Magento\Framework\App\View\Asset\Publisher::publish()`,
+ * which returns early the moment the destination exists. A Luma theme never
+ * notices: its CSS is written by the pre-processor pipeline, which rewrites. Vite
+ * output is copied verbatim and most of its filenames are stable — the theme
+ * stylesheet, every enhancer, every island — so a rebuild followed by a redeploy
+ * republishes only the files that did not exist before, and serves yesterday's
+ * bundle for the rest. Nothing fails; the storefront just stops matching its
+ * source. That is why presence is not enough and size and mtime are compared too.
  *
  * Only MageObsidian themes are inspected: they are the ones whose assets this
  * module is responsible for producing.
@@ -48,9 +60,9 @@ class ViteOutputVerifier
      * reports a healthy deploy as a broken one.
      *
      * @param array<string, mixed> $options
-     * @return array<string, string[]> "<theme>@<locale>" => paths relative to generated/
+     * @return array<string, ViteOutputTarget> keyed by "<theme>@<locale>"
      */
-    public function findMissing(array $options): array
+    public function findOutdated(array $options): array
     {
         $locales = $this->targets->locales($options);
         if ($locales === []) {
@@ -58,7 +70,7 @@ class ViteOutputVerifier
         }
 
         $staticRoot = $this->directoryList->getPath(DirectoryList::STATIC_VIEW);
-        $missing = [];
+        $outdated = [];
 
         foreach ($this->configManager->get()['themes'] ?? [] as $theme => $definition) {
             if (!$this->targets->includesTheme((string)$theme, $options)) {
@@ -73,20 +85,46 @@ class ViteOutputVerifier
             $built = $this->relativePaths($source);
             foreach ($locales as $locale) {
                 $target = $staticRoot . '/' . self::AREA . '/' . $theme . '/' . $locale
-                    . '/' . ConfigInterface::GENERATED_PATH . '/';
+                    . '/' . ConfigInterface::GENERATED_PATH;
 
-                $absent = array_values(array_filter(
+                $files = array_values(array_filter(
                     $built,
-                    fn (string $file): bool => !$this->driver->isExists($target . $file)
+                    fn (string $file): bool => $this->isOutdated($source . '/' . $file, $target . '/' . $file)
                 ));
 
-                if ($absent !== []) {
-                    $missing[$theme . '@' . $locale] = $absent;
+                if ($files !== []) {
+                    $entry = new ViteOutputTarget((string)$theme, (string)$locale, $source, $target, $files);
+                    $outdated[$entry->label()] = $entry;
                 }
             }
         }
 
-        return $missing;
+        return $outdated;
+    }
+
+    /**
+     * A published file is outdated when it is absent, when it is a different
+     * size, or when the build wrote its source after it was published. Content
+     * is deliberately not hashed: a theme publishes thousands of files per
+     * locale and reading them all would cost more than the deploy itself.
+     */
+    private function isOutdated(string $source, string $target): bool
+    {
+        if (!$this->driver->isExists($target)) {
+            return true;
+        }
+
+        try {
+            $published = $this->driver->stat($target);
+            $built = $this->driver->stat($source);
+        } catch (FileSystemException) {
+            // Unreadable is not proof of staleness, and republishing over a file
+            // that cannot be stat'ed is unlikely to go better.
+            return false;
+        }
+
+        return ($published['size'] ?? null) !== ($built['size'] ?? null)
+            || (int)($published['mtime'] ?? 0) < (int)($built['mtime'] ?? 0);
     }
 
     /**
