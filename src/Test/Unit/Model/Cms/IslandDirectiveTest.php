@@ -5,6 +5,7 @@ namespace MageObsidian\ModernFrontend\Test\Unit\Model\Cms;
 
 use MageObsidian\ModernFrontend\Model\Cms\IslandDirective;
 use MageObsidian\ModernFrontend\Service\Cms\IslandRenderer;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
@@ -71,9 +72,7 @@ class IslandDirectiveTest extends TestCase
         $this->directive->process(self::COMPONENT, [], '{"limit": 8}');
     }
 
-    /**
-     * @dataProvider missingComponents
-     */
+    #[DataProvider('missingComponents')]
     public function testRendersNothingWithoutAComponent(mixed $value, array $parameters): void
     {
         $this->renderer->expects($this->never())->method('render');

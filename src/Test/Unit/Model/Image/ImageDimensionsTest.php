@@ -33,7 +33,6 @@ class ImageDimensionsTest extends TestCase
         $this->tmpFile = tempnam(sys_get_temp_dir(), 'mageobsidian_img_') . '.png';
         $gd = imagecreatetruecolor(3, 2);
         imagepng($gd, $this->tmpFile);
-        imagedestroy($gd);
 
         $this->assertSame([3, 2], $this->dimensions->read($this->tmpFile));
     }

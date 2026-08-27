@@ -28,7 +28,7 @@ class IslandRendererTest extends TestCase
         $this->logger = $this->createMock(LoggerInterface::class);
     }
 
-    private function renderer(array $islands = null): IslandRenderer
+    private function renderer(?array $islands = null): IslandRenderer
     {
         $islands ??= [
             'carousel' => ['component' => self::COMPONENT, 'props' => ['limit' => 4, 'title' => 'Featured']],

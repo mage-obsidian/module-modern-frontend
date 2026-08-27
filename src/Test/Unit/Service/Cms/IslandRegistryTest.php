@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace MageObsidian\ModernFrontend\Test\Unit\Service\Cms;
 
 use MageObsidian\ModernFrontend\Service\Cms\IslandRegistry;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -50,9 +51,7 @@ class IslandRegistryTest extends TestCase
         $this->assertSame([], $island['props']);
     }
 
-    /**
-     * @dataProvider malformedEntries
-     */
+    #[DataProvider('malformedEntries')]
     public function testDropsAnEntryItCannotUse(mixed $entry): void
     {
         $this->assertSame([], (new IslandRegistry(['broken' => $entry]))->getAll());

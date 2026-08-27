@@ -6,6 +6,7 @@ namespace MageObsidian\ModernFrontend\Test\Unit\Service\Dev;
 use MageObsidian\ModernFrontend\Service\Dev\CheckResult;
 use MageObsidian\ModernFrontend\Service\Dev\DevDiagnostics;
 use MageObsidian\ModernFrontend\Service\Dev\ProbeResult;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class DevDiagnosticsTest extends TestCase
@@ -172,9 +173,7 @@ class DevDiagnosticsTest extends TestCase
         );
     }
 
-    /**
-     * @dataProvider kernelArgumentShapes
-     */
+    #[DataProvider('kernelArgumentShapes')]
     public function testResolvePageCacheIdentifierPrefersTheKernelArgument(array $identifierArgument): void
     {
         $resolved = $this->diagnostics->resolvePageCacheIdentifier([
