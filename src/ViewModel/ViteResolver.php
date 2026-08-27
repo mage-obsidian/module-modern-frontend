@@ -254,6 +254,10 @@ class ViteResolver implements ArgumentInterface
      */
     private function renderEagerPreload(string $componentFile): string
     {
+        if (!$this->configProvider->isIslandPreloadEnabled()) {
+            return '';
+        }
+
         $urls = [];
         foreach ($this->islandManifest->getPreloadFiles([$componentFile]) as $file) {
             $urls[] = $this->getViteFileUrl($file);

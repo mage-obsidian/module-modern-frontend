@@ -33,8 +33,10 @@ class ViteResolverTest extends TestCase
         $this->preloadFiles = [];
     }
 
-    private function buildResolver(string $viteGeneratedPath = 'vite_generated'): ViteResolver
-    {
+    private function buildResolver(
+        string $viteGeneratedPath = 'vite_generated',
+        bool $islandPreload = true
+    ): ViteResolver {
         $repository = $this->createMock(Repository::class);
         // Echo the resolved fileId so path composition is observable.
         $repository->method('getUrlWithParams')
@@ -45,6 +47,7 @@ class ViteResolverTest extends TestCase
 
         $configProvider = $this->createMock(ConfigProvider::class);
         $configProvider->method('getViteGeneratedPath')->willReturn($viteGeneratedPath);
+        $configProvider->method('isIslandPreloadEnabled')->willReturn($islandPreload);
 
         $locale = $this->createMock(LocaleResolver::class);
         $locale->method('getLocale')->willReturn('en_US');
@@ -281,6 +284,16 @@ class ViteResolverTest extends TestCase
             strpos($html, 'data-mage-island'),
             strpos($html, '<link rel="modulepreload"')
         );
+    }
+
+    public function testEagerIslandEmitsNoPreloadWhenTheStoreHasNotAskedForIt(): void
+    {
+        $this->preloadFiles = ['Vendor/components/Card.js', 'lib/pinia.js'];
+
+        $html = $this->buildResolver('vite_generated', false)->renderVueComponent('Vendor::Card', [], true);
+
+        $this->assertStringNotContainsString('modulepreload', $html);
+        $this->assertStringContainsString('data-strategy="eager"', $html);
     }
 
     public function testRenderVueComponentVisibleIslandEmitsNoPreload(): void

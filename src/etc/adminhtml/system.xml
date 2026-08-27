@@ -117,6 +117,13 @@
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <config_path>mage_obsidian/storefront/optimistic_ui</config_path>
                 </field>
+                <field id="island_preload" translate="label comment" type="select" sortOrder="20"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Preload Eager Island Chunks</label>
+                    <comment>Announce an eager island's dependency chunks with modulepreload so the browser fetches the graph in parallel. Off by default: on a throttled connection the hints take bandwidth from the largest contentful paint, which is the metric a shopper and a search engine both see. Turn on if your traffic is mostly on fast links and island readiness matters more.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <config_path>mage_obsidian/storefront/island_preload</config_path>
+                </field>
             </group>
         </section>
     </system>

@@ -33,6 +33,7 @@ class ConfigProvider implements ArgumentInterface
     public const string CHECKOUT_CACHEABLE_SHELL = self::CHECKOUT_PATH . 'cacheable_shell';
     public const string STOREFRONT_PATH = self::ROOT_PATH . 'storefront/';
     public const string STOREFRONT_OPTIMISTIC_UI = self::STOREFRONT_PATH . 'optimistic_ui';
+    public const string STOREFRONT_ISLAND_PRELOAD = self::STOREFRONT_PATH . 'island_preload';
     public const string CART_SUMMARY_USE_QTY = 'checkout/cart_link/use_qty';
 
     /**
@@ -43,6 +44,16 @@ class ConfigProvider implements ArgumentInterface
         private readonly ScopeConfigInterface $scopeConfig,
         private readonly State $state
     ) {
+    }
+
+    /**
+     * Whether an eager island may announce its dependency chunks with modulepreload.
+     *
+     * @return bool
+     */
+    public function isIslandPreloadEnabled(): bool
+    {
+        return (bool)$this->scopeConfig->getValue(self::STOREFRONT_ISLAND_PRELOAD, ScopeInterface::SCOPE_STORE);
     }
 
     /**
