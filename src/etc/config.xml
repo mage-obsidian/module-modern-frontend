@@ -25,5 +25,25 @@
                 <optimistic_ui>1</optimistic_ui>
             </storefront>
         </mage_obsidian>
+        <!--
+            Every inline script and stylesheet MageObsidian emits goes through
+            SecureHtmlRenderer, and Magento only nonces (scripts) or hashes
+            (styles) them when the configured policy disallows inline. Leaving
+            core's default of 1 means the whole runtime is unreachable the moment
+            a merchant enforces the policy. The mode stays report-only, so this
+            tightens what is reported without blocking anything.
+        -->
+        <csp>
+            <policies>
+                <storefront>
+                    <scripts>
+                        <inline>0</inline>
+                    </scripts>
+                    <styles>
+                        <inline>0</inline>
+                    </styles>
+                </storefront>
+            </policies>
+        </csp>
     </default>
 </config>
