@@ -34,8 +34,20 @@ class IslandsRuntimeTest extends TestCase
         $html = (string)$method->invoke($block);
 
         $this->assertSame(
-            '<script type="module" src="/static/generated/MageObsidian_ModernFrontend/js/islands.js"></script>',
+            '<script type="module" src="/static/generated/MageObsidian_ModernFrontend/js/islands.js"'
+            . ' fetchpriority="low"></script>',
             $html
         );
+    }
+
+    public function testTheBootstrapYieldsBandwidthToWhateverPaintsFirst(): void
+    {
+        $resolver = $this->createMock(ViteResolver::class);
+        $resolver->method('getIslandsRuntimeUrl')->willReturn('/islands.js');
+
+        $block = new IslandsRuntime($this->createMock(Context::class), $resolver);
+        $html = (string)(new \ReflectionMethod($block, '_toHtml'))->invoke($block);
+
+        $this->assertStringContainsString('fetchpriority="low"', $html);
     }
 }

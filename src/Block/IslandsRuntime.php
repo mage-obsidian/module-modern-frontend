@@ -46,6 +46,6 @@ class IslandsRuntime extends AbstractBlock
             'UTF-8'
         );
 
-        return "<script type=\"module\" src=\"{$url}\"></script>";
+        return "<script type=\"module\" src=\"{$url}\" fetchpriority=\"low\"></script>";
     }
 }
