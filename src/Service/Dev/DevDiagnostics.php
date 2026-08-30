@@ -22,6 +22,10 @@ class DevDiagnostics
 {
     public const DEV_SERVER_HINT = 'Start it: bin/magento mage-obsidian:frontend:dev --up';
 
+    public const JS_ENGINE_PACKAGE = 'mage-obsidian';
+
+    public const JS_ENGINE_HINT = 'Composer never touches the npm side. Install it: cd vite && pnpm install';
+
     /**
      * Extensions a config file may carry. The engine loads exactly one filename
      * (MODULE_CONFIG_FILE / THEME_CONFIG_FILE); a sibling sharing the base name
@@ -463,6 +467,118 @@ class DevDiagnostics
             ),
             $hint
         );
+    }
+
+
+    public function extractJsEngineRange(?string $manifestJson): ?string
+    {
+        $manifest = $this->decodeManifest($manifestJson);
+
+        foreach (['dependencies', 'devDependencies'] as $section) {
+            $range = $manifest[$section][self::JS_ENGINE_PACKAGE] ?? null;
+            if (is_string($range) && $range !== '') {
+                return $range;
+            }
+        }
+
+        return null;
+    }
+
+    public function extractJsEngineVersion(?string $manifestJson): ?string
+    {
+        $version = $this->decodeManifest($manifestJson)['version'] ?? null;
+
+        return is_string($version) && $version !== '' ? $version : null;
+    }
+
+    private function decodeManifest(?string $manifestJson): array
+    {
+        if ($manifestJson === null || $manifestJson === '') {
+            return [];
+        }
+
+        $decoded = json_decode($manifestJson, true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    public function evaluateJsEngine(?string $requiredRange, ?string $installedVersion): CheckResult
+    {
+        if ($requiredRange === null) {
+            return CheckResult::warn(
+                'JS engine',
+                'vite/package.json was not found, so the required ' . self::JS_ENGINE_PACKAGE
+                    . ' version is unknown.',
+                'The vite/ harness ships with mage-obsidian/component-modern-frontend; reinstall it.'
+            );
+        }
+
+        if ($installedVersion === null) {
+            return CheckResult::error(
+                'JS engine',
+                sprintf(
+                    'vite/package.json requires %s %s, but nothing is installed under vite/node_modules.',
+                    self::JS_ENGINE_PACKAGE,
+                    $requiredRange
+                ),
+                self::JS_ENGINE_HINT
+            );
+        }
+
+        $satisfied = $this->satisfiesVersionRange($requiredRange, $installedVersion);
+
+        if ($satisfied === null) {
+            return CheckResult::warn(
+                'JS engine',
+                sprintf(
+                    'Installed %s %s was not checked: %s is neither a caret nor an exact version.',
+                    self::JS_ENGINE_PACKAGE,
+                    $installedVersion,
+                    $requiredRange
+                ),
+                self::JS_ENGINE_HINT
+            );
+        }
+
+        if (!$satisfied) {
+            return CheckResult::error(
+                'JS engine',
+                sprintf(
+                    'Installed %s %s does not satisfy %s from vite/package.json.',
+                    self::JS_ENGINE_PACKAGE,
+                    $installedVersion,
+                    $requiredRange
+                ),
+                self::JS_ENGINE_HINT
+            );
+        }
+
+        return CheckResult::ok(
+            'JS engine',
+            sprintf('%s %s satisfies %s.', self::JS_ENGINE_PACKAGE, $installedVersion, $requiredRange)
+        );
+    }
+
+    private function satisfiesVersionRange(string $range, string $version): ?bool
+    {
+        if (!preg_match('/^(\^?)(\d+)\.(\d+)\.(\d+)$/', trim($range), $matches)) {
+            return null;
+        }
+
+        [, $caret, $major, $minor, $patch] = $matches;
+
+        if ($caret === '') {
+            return version_compare($version, sprintf('%d.%d.%d', $major, $minor, $patch), '==');
+        }
+
+        $ceiling = match (true) {
+            (int)$major > 0 => sprintf('%d.0.0', (int)$major + 1),
+            (int)$minor > 0 => sprintf('0.%d.0', (int)$minor + 1),
+            default => sprintf('0.0.%d', (int)$patch + 1),
+        };
+
+        return version_compare($version, sprintf('%d.%d.%d', $major, $minor, $patch), '>=')
+            && version_compare($version, $ceiling, '<');
     }
 
     /**

@@ -338,4 +338,120 @@ class DevDiagnosticsTest extends TestCase
         $this->assertStringContainsString('Vendor::ProductForm', $result->message);
         $this->assertStringContainsString('mage-obsidian:island-ssr', $result->hint);
     }
+
+    public function testJsEngineMissingManifestIsWarn(): void
+    {
+        $result = $this->diagnostics->evaluateJsEngine(null, '2.9.0');
+
+        $this->assertSame(CheckResult::STATUS_WARN, $result->status);
+        $this->assertStringContainsString('vite/package.json', $result->message);
+    }
+
+    public function testJsEngineNotInstalledIsError(): void
+    {
+        $result = $this->diagnostics->evaluateJsEngine('^2.9.1', null);
+
+        $this->assertSame(CheckResult::STATUS_ERROR, $result->status);
+        $this->assertStringContainsString('pnpm install', $result->hint);
+    }
+
+    public function testJsEngineBehindTheRequiredRangeIsError(): void
+    {
+        $result = $this->diagnostics->evaluateJsEngine('^2.9.1', '2.9.0');
+
+        $this->assertSame(CheckResult::STATUS_ERROR, $result->status);
+        $this->assertStringContainsString('2.9.0', $result->message);
+        $this->assertStringContainsString('^2.9.1', $result->message);
+        $this->assertStringContainsString('pnpm install', $result->hint);
+    }
+
+    public function testJsEngineAheadOfTheRequiredMajorIsError(): void
+    {
+        $result = $this->diagnostics->evaluateJsEngine('^2.9.1', '3.0.0');
+
+        $this->assertSame(CheckResult::STATUS_ERROR, $result->status);
+    }
+
+    public function testJsEngineWithinTheRequiredRangeIsOk(): void
+    {
+        $this->assertTrue($this->diagnostics->evaluateJsEngine('^2.9.1', '2.10.0')->isOk());
+    }
+
+    public function testJsEngineExactlyAtTheRangeFloorIsOk(): void
+    {
+        $this->assertTrue($this->diagnostics->evaluateJsEngine('^2.9.1', '2.9.1')->isOk());
+    }
+
+    public function testJsEngineCaretOnAZeroMajorIsBoundedByTheMinor(): void
+    {
+        $this->assertTrue($this->diagnostics->evaluateJsEngine('^0.4.1', '0.4.9')->isOk());
+        $this->assertSame(
+            CheckResult::STATUS_ERROR,
+            $this->diagnostics->evaluateJsEngine('^0.4.1', '0.5.0')->status
+        );
+    }
+
+    public function testJsEngineCaretOnAZeroMinorIsBoundedByThePatch(): void
+    {
+        $this->assertTrue($this->diagnostics->evaluateJsEngine('^0.0.3', '0.0.3')->isOk());
+        $this->assertSame(
+            CheckResult::STATUS_ERROR,
+            $this->diagnostics->evaluateJsEngine('^0.0.3', '0.0.4')->status
+        );
+    }
+
+    public function testJsEnginePinnedVersionIsComparedExactly(): void
+    {
+        $this->assertTrue($this->diagnostics->evaluateJsEngine('2.9.1', '2.9.1')->isOk());
+        $this->assertSame(
+            CheckResult::STATUS_ERROR,
+            $this->diagnostics->evaluateJsEngine('2.9.1', '2.9.2')->status
+        );
+    }
+
+    public function testJsEngineUninterpretableRangeIsWarnNotError(): void
+    {
+        $result = $this->diagnostics->evaluateJsEngine('>=2 <3 || next', '2.9.0');
+
+        $this->assertSame(CheckResult::STATUS_WARN, $result->status);
+        $this->assertStringContainsString('2.9.0', $result->message);
+    }
+
+    public function testJsEngineRangeIsReadFromDependencies(): void
+    {
+        $manifest = '{"dependencies":{"vue":"^3.5.38","mage-obsidian":"^2.9.1"}}';
+
+        $this->assertSame('^2.9.1', $this->diagnostics->extractJsEngineRange($manifest));
+    }
+
+    public function testJsEngineRangeFallsBackToDevDependencies(): void
+    {
+        $manifest = '{"devDependencies":{"mage-obsidian":"2.9.1"}}';
+
+        $this->assertSame('2.9.1', $this->diagnostics->extractJsEngineRange($manifest));
+    }
+
+    public function testJsEngineRangeIsNullWhenThePackageIsAbsent(): void
+    {
+        $this->assertNull($this->diagnostics->extractJsEngineRange('{"dependencies":{"vue":"^3.5.38"}}'));
+    }
+
+    public function testJsEngineRangeIsNullForUnreadableManifests(): void
+    {
+        $this->assertNull($this->diagnostics->extractJsEngineRange(null));
+        $this->assertNull($this->diagnostics->extractJsEngineRange('not json'));
+        $this->assertNull($this->diagnostics->extractJsEngineRange('[]'));
+    }
+
+    public function testJsEngineInstalledVersionIsReadFromTheInstalledManifest(): void
+    {
+        $this->assertSame('2.9.0', $this->diagnostics->extractJsEngineVersion('{"name":"mage-obsidian","version":"2.9.0"}'));
+    }
+
+    public function testJsEngineInstalledVersionIsNullWhenAbsentOrUnreadable(): void
+    {
+        $this->assertNull($this->diagnostics->extractJsEngineVersion('{"name":"mage-obsidian"}'));
+        $this->assertNull($this->diagnostics->extractJsEngineVersion(null));
+        $this->assertNull($this->diagnostics->extractJsEngineVersion('not json'));
+    }
 }
