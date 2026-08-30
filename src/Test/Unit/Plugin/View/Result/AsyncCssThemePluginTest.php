@@ -5,6 +5,7 @@ namespace MageObsidian\ModernFrontend\Test\Unit\Plugin\View\Result;
 
 use MageObsidian\ModernFrontend\Api\ConfigManagerInterface;
 use MageObsidian\ModernFrontend\Plugin\View\Result\AsyncCssThemePlugin;
+use MageObsidian\ModernFrontend\Service\Theme\ObsidianThemeDetector;
 use Magento\Framework\App\ResponseInterface;
 use Magento\Framework\View\Design\ThemeInterface;
 use Magento\Framework\View\DesignInterface;
@@ -98,9 +99,11 @@ class AsyncCssThemePluginTest extends TestCase
         ?LoggerInterface $logger = null
     ): AsyncCssThemePlugin {
         return new AsyncCssThemePlugin(
-            $design,
-            $configManager,
-            $logger ?? $this->createMock(LoggerInterface::class)
+            new ObsidianThemeDetector(
+                $design,
+                $configManager,
+                $logger ?? $this->createMock(LoggerInterface::class)
+            )
         );
     }
 

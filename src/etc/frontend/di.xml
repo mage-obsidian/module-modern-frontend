@@ -36,9 +36,13 @@
         <plugin name="mageObsidian_forceReportOnlyCspInHmr"
                 type="MageObsidian\ModernFrontend\Plugin\Csp\ForceReportOnlyInHmr"/>
     </type>
-    <type name="MageObsidian\ModernFrontend\Plugin\View\Result\AsyncCssThemePlugin">
+    <type name="MageObsidian\ModernFrontend\Service\Theme\ObsidianThemeDetector">
         <arguments>
             <argument name="design" xsi:type="object">Magento\Framework\View\DesignInterface\Proxy</argument>
         </arguments>
+    </type>
+    <type name="Magento\Framework\View\Page\Config">
+        <plugin name="mageObsidian_nonBlockingHeadIncludes"
+                type="MageObsidian\ModernFrontend\Plugin\View\Page\Config\NonBlockingIncludes"/>
     </type>
 </config>

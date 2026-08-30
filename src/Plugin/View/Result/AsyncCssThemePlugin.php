@@ -10,12 +10,9 @@ declare(strict_types=1);
 namespace MageObsidian\ModernFrontend\Plugin\View\Result;
 
 use Magento\Framework\App\ResponseInterface;
-use Magento\Framework\View\DesignInterface;
 use Magento\Framework\View\Result\Layout;
 use Magento\Theme\Controller\Result\AsyncCssPlugin;
-use MageObsidian\ModernFrontend\Api\ConfigManagerInterface;
-use Psr\Log\LoggerInterface;
-use Throwable;
+use MageObsidian\ModernFrontend\Service\Theme\ObsidianThemeDetector;
 
 /**
  * Skips Magento's native async-CSS rewrite while a MageObsidian theme is active.
@@ -30,9 +27,7 @@ use Throwable;
 class AsyncCssThemePlugin
 {
     public function __construct(
-        private readonly DesignInterface $design,
-        private readonly ConfigManagerInterface $configManager,
-        private readonly LoggerInterface $logger
+        private readonly ObsidianThemeDetector $themeDetector
     ) {
     }
 
@@ -43,32 +38,10 @@ class AsyncCssThemePlugin
         Layout $result,
         ResponseInterface $httpResponse
     ): Layout {
-        if ($this->isObsidianTheme()) {
+        if ($this->themeDetector->isActive()) {
             return $result;
         }
 
         return $proceed($renderSubject, $result, $httpResponse);
-    }
-
-    /**
-     * Whether the active design theme opted into the MageObsidian pipeline.
-     *
-     * Any failure degrades to "not Obsidian" so the native async-CSS behaviour
-     * is left in place rather than masked.
-     *
-     * @return bool
-     */
-    private function isObsidianTheme(): bool
-    {
-        try {
-            $themeCode = (string)$this->design->getDesignTheme()->getCode();
-            return $themeCode !== '' && $this->configManager->isThemeEnabled($themeCode);
-        } catch (Throwable $e) {
-            $this->logger->warning(
-                'MageObsidian: could not resolve the active theme for async-css; '
-                . 'leaving native behaviour in place: ' . $e->getMessage()
-            );
-            return false;
-        }
     }
 }

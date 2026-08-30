@@ -34,6 +34,9 @@ class ConfigProvider implements ArgumentInterface
     public const string STOREFRONT_PATH = self::ROOT_PATH . 'storefront/';
     public const string STOREFRONT_OPTIMISTIC_UI = self::STOREFRONT_PATH . 'optimistic_ui';
     public const string STOREFRONT_ISLAND_PRELOAD = self::STOREFRONT_PATH . 'island_preload';
+    public const string HEAD_PATH = self::ROOT_PATH . 'head/';
+    public const string HEAD_INCLUDES_DEFER_SCRIPTS = self::HEAD_PATH . 'includes_defer_scripts';
+    public const string HEAD_INCLUDES_DEFER_STYLES = self::HEAD_PATH . 'includes_defer_styles';
     public const string CART_SUMMARY_USE_QTY = 'checkout/cart_link/use_qty';
 
     /**
