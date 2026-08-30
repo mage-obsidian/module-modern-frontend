@@ -88,6 +88,98 @@
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <config_path>mage_obsidian/seo/structured_data_enabled</config_path>
                 </field>
+                <field id="webpage_enabled" translate="label comment" type="select" sortOrder="20"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Emit WebPage Node</label>
+                    <comment>Emit a WebPage / CollectionPage / ItemPage node carrying datePublished and dateModified, the freshness signals crawlers and answer engines look for.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <config_path>mage_obsidian/seo/webpage_enabled</config_path>
+                    <depends><field id="structured_data_enabled">1</field></depends>
+                </field>
+                <field id="organization_logo" translate="label comment" type="image" sortOrder="30"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Organization Logo</label>
+                    <comment>Logo for the Organization node (Google knowledge panel). Leave empty to reuse the header logo. Use a square or wide raster image of at least 112x112 px.</comment>
+                    <backend_model>Magento\Config\Model\Config\Backend\Image</backend_model>
+                    <upload_dir config="system/filesystem/media">mage_obsidian/seo</upload_dir>
+                    <base_url type="media">mage_obsidian/seo</base_url>
+                    <config_path>mage_obsidian/seo/organization_logo</config_path>
+                    <depends><field id="structured_data_enabled">1</field></depends>
+                </field>
+                <field id="organization_description" translate="label comment" type="textarea" sortOrder="40"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Organization Description</label>
+                    <comment>One paragraph describing the brand. Falls back to the default meta description when empty.</comment>
+                    <config_path>mage_obsidian/seo/organization_description</config_path>
+                    <depends><field id="structured_data_enabled">1</field></depends>
+                </field>
+                <field id="organization_same_as" translate="label comment" type="textarea" sortOrder="50"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Organization sameAs URIs</label>
+                    <comment>One absolute URI per line: Wikipedia, Wikidata, LinkedIn, Crunchbase, social profiles. These are what let a search or answer engine tie this site to a known entity.</comment>
+                    <config_path>mage_obsidian/seo/organization_same_as</config_path>
+                    <depends><field id="structured_data_enabled">1</field></depends>
+                </field>
+                <field id="organization_contact_type" translate="label comment" type="text" sortOrder="60"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Contact Point Type</label>
+                    <comment>schema.org contactType for the phone in Store Information (customer support, sales, technical support...). The contact point is omitted when no phone or email is configured.</comment>
+                    <config_path>mage_obsidian/seo/organization_contact_type</config_path>
+                    <depends><field id="structured_data_enabled">1</field></depends>
+                </field>
+                <field id="organization_address_enabled" translate="label comment" type="select" sortOrder="70"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Emit Postal Address</label>
+                    <comment>Emit the Store Information address as a PostalAddress. Turn off for a store with no public physical location.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <config_path>mage_obsidian/seo/organization_address_enabled</config_path>
+                    <depends><field id="structured_data_enabled">1</field></depends>
+                </field>
+                <field id="product_brand_attribute" translate="label comment" type="text" sortOrder="80"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Brand Attribute Code</label>
+                    <comment>Product attribute holding the brand. Defaults to manufacturer. Leave empty to omit brand.</comment>
+                    <config_path>mage_obsidian/seo/product_brand_attribute</config_path>
+                    <depends><field id="structured_data_enabled">1</field></depends>
+                </field>
+                <field id="product_gtin_attribute" translate="label comment" type="text" sortOrder="90"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>GTIN Attribute Code</label>
+                    <comment>Product attribute holding the EAN / UPC / ISBN. The digit count decides whether it is emitted as gtin8, gtin12, gtin13 or gtin14. Leave empty to omit.</comment>
+                    <config_path>mage_obsidian/seo/product_gtin_attribute</config_path>
+                    <depends><field id="structured_data_enabled">1</field></depends>
+                </field>
+                <field id="product_mpn_attribute" translate="label comment" type="text" sortOrder="100"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>MPN Attribute Code</label>
+                    <comment>Product attribute holding the manufacturer part number. Leave empty to omit.</comment>
+                    <config_path>mage_obsidian/seo/product_mpn_attribute</config_path>
+                    <depends><field id="structured_data_enabled">1</field></depends>
+                </field>
+                <field id="product_condition" translate="label comment" type="select" sortOrder="110"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Item Condition</label>
+                    <comment>schema.org itemCondition applied to every offer.</comment>
+                    <source_model>MageObsidian\ModernFrontend\Model\Config\Source\ProductCondition</source_model>
+                    <config_path>mage_obsidian/seo/product_condition</config_path>
+                    <depends><field id="structured_data_enabled">1</field></depends>
+                </field>
+                <field id="product_image_limit" translate="label comment" type="text" sortOrder="120"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Product Images In Schema</label>
+                    <comment>How many media gallery images to list on the Product node. Google recommends several aspect ratios of the same product.</comment>
+                    <validate>validate-digits validate-greater-than-zero</validate>
+                    <config_path>mage_obsidian/seo/product_image_limit</config_path>
+                    <depends><field id="structured_data_enabled">1</field></depends>
+                </field>
+                <field id="price_valid_until_days" translate="label comment" type="text" sortOrder="130"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>priceValidUntil Horizon (days)</label>
+                    <comment>Leave at 0 unless you are actually committing to it. An active special price always supplies priceValidUntil from its own end date; this field only applies when there is none, and any value above 0 asserts to Google that your price is guaranteed for that many days. That assertion is yours, not a computed fact — Google treats an invented validity date as misleading markup. Omitting the property only costs a non-blocking warning.</comment>
+                    <validate>validate-digits</validate>
+                    <config_path>mage_obsidian/seo/price_valid_until_days</config_path>
+                    <depends><field id="structured_data_enabled">1</field></depends>
+                </field>
             </group>
             <group id="checkout" translate="label" type="text" sortOrder="40"
                    showInDefault="1" showInWebsite="1" showInStore="1">
@@ -105,6 +197,24 @@
                     <comment>Serve the checkout page from the full-page cache, delivering the cart through customer-data instead of inlining it. Off by default. Verify your payment and shipping extensions before enabling; append ?obsidian_shell=0 to any checkout URL to bypass it.</comment>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <config_path>mage_obsidian/checkout/cacheable_shell</config_path>
+                </field>
+            </group>
+            <group id="head" translate="label" type="text" sortOrder="45"
+                   showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>HTML Head Includes</label>
+                <field id="includes_defer_scripts" translate="label comment" type="select" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Defer Scripts In Head Includes</label>
+                    <comment><![CDATA[Design &gt; HTML Head &gt; Scripts and Style Sheets is a native Magento field, and whoever pastes markup into it owns what that markup does; MageObsidian does not rewrite it on its own. <strong>Off by default, and turning it on is a decision about your own content, not a free win.</strong> When on, an external <code>&lt;script src&gt;</code> gets <code>defer</code> so it stops blocking the render. <strong>That breaks any tag that has to run blocking:</strong> A/B testing anti-flicker snippets and consent managers are pasted into this exact field, and deferring them causes the very flash or the late banner they exist to prevent. An external script is left alone when an inline <code>&lt;script&gt;</code> follows it in this field, since that inline tag is usually the call into the library it just loaded — but that check only sees this field, so a caller living in a template, another module or a Page Builder widget is invisible to it. <code>async</code>, <code>defer</code> and <code>type="module"</code> tags, and inline scripts, are never touched. Add <code>data-obsidian-blocking</code> to any tag to keep it exactly as written.]]></comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <config_path>mage_obsidian/head/includes_defer_scripts</config_path>
+                </field>
+                <field id="includes_defer_styles" translate="label comment" type="select" sortOrder="20"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Defer Stylesheets In Head Includes</label>
+                    <comment><![CDATA[Design &gt; HTML Head &gt; Scripts and Style Sheets is a native Magento field, and whoever pastes markup into it owns what that markup does; MageObsidian does not rewrite it on its own. <strong>Off by default, and turning it on is a decision about your own content, not a free win.</strong> When on, every <code>&lt;link rel="stylesheet"&gt;</code> here loads as a preload that is promoted to a stylesheet once it arrives, with a <code>&lt;noscript&gt;</code> fallback. <strong>The page paints before that CSS applies</strong>, so if the sheet styles anything above the fold the shopper sees a flash of unstyled content and the layout jumps when it lands, which counts against Cumulative Layout Shift. Only turn it on when you know the sheet styles content below the fold or is purely cosmetic. A <code>media="print"</code> sheet is skipped because it never blocks the screen render, and <code>media</code>, <code>integrity</code>, <code>crossorigin</code>, <code>referrerpolicy</code>, <code>id</code> and <code>title</code> are carried over, so Subresource Integrity keeps being verified. Add <code>data-obsidian-blocking</code> to any tag to keep it exactly as written.]]></comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <config_path>mage_obsidian/head/includes_defer_styles</config_path>
                 </field>
             </group>
             <group id="storefront" translate="label" type="text" sortOrder="50"

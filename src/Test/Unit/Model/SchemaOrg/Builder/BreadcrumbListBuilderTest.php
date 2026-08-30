@@ -51,4 +51,22 @@ class BreadcrumbListBuilderTest extends TestCase
         $this->assertSame([], $this->builder->build([]));
         $this->assertSame([], $this->builder->build([['name' => '', 'url' => 'x']]));
     }
+
+    public function testCarriesAnIdSoAWebPageCanReferenceIt(): void
+    {
+        $node = $this->builder->build(
+            [['name' => 'Home', 'url' => 'https://acme.test/']],
+            'https://acme.test/bags#breadcrumb'
+        );
+
+        $this->assertSame('https://acme.test/bags#breadcrumb', $node['@id']);
+        $this->assertSame(['@type', '@id', 'itemListElement'], array_keys($node));
+    }
+
+    public function testOmitsIdWhenNoneIsGiven(): void
+    {
+        $node = $this->builder->build([['name' => 'Home', 'url' => 'https://acme.test/']], '');
+
+        $this->assertArrayNotHasKey('@id', $node);
+    }
 }

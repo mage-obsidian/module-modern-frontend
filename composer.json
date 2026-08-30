@@ -32,6 +32,7 @@
         "magento/module-backend": ">=102.0.6",
         "magento/module-translation": ">=100.4.6",
         "magento/module-cms": ">=104.0.6",
+        "magento/module-directory": ">=100.4.6",
         "magento/module-widget": ">=101.2.6",
         "symfony/process": "^6.4 || ^7.0",
         "justinrainbow/json-schema": "^5.2 || ^6.0"

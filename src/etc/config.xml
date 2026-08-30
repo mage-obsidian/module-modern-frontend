@@ -16,11 +16,22 @@
             </dev_server>
             <seo>
                 <structured_data_enabled>1</structured_data_enabled>
+                <webpage_enabled>1</webpage_enabled>
+                <organization_contact_type>customer support</organization_contact_type>
+                <organization_address_enabled>1</organization_address_enabled>
+                <product_brand_attribute>manufacturer</product_brand_attribute>
+                <product_condition>NewCondition</product_condition>
+                <product_image_limit>3</product_image_limit>
+                <price_valid_until_days>0</price_valid_until_days>
             </seo>
             <checkout>
                 <layout_mode>stepped</layout_mode>
                 <cacheable_shell>0</cacheable_shell>
             </checkout>
+            <head>
+                <includes_defer_scripts>0</includes_defer_scripts>
+                <includes_defer_styles>0</includes_defer_styles>
+            </head>
             <storefront>
                 <optimistic_ui>1</optimistic_ui>
                 <island_preload>0</island_preload>

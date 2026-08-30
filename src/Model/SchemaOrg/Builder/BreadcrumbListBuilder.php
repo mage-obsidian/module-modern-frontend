@@ -21,10 +21,11 @@ class BreadcrumbListBuilder
 {
     /**
      * @param list<array{name?:string|null, url?:string|null}> $crumbs Ordered crumbs.
+     * @param string|null $id Node `@id`, so a WebPage can reference this list.
      *
      * @return array<string,mixed> The node, or [] when no valid crumb remains.
      */
-    public function build(array $crumbs): array
+    public function build(array $crumbs, ?string $id = null): array
     {
         $elements = [];
         $position = 1;
@@ -54,9 +55,12 @@ class BreadcrumbListBuilder
             return [];
         }
 
-        return [
-            '@type' => 'BreadcrumbList',
-            'itemListElement' => $elements,
-        ];
+        $node = ['@type' => 'BreadcrumbList'];
+        if ($id !== null && $id !== '') {
+            $node['@id'] = $id;
+        }
+        $node['itemListElement'] = $elements;
+
+        return $node;
     }
 }

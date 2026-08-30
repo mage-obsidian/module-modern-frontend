@@ -17,6 +17,22 @@
             <argument name="filesystemDriver" xsi:type="object">Magento\Framework\Filesystem\Driver\File</argument>
         </arguments>
     </type>
+    <type name="MageObsidian\ModernFrontend\Model\SchemaOrg\PageTypeResolver">
+        <arguments>
+            <argument name="map" xsi:type="array">
+                <item name="catalog_product_view" xsi:type="string">ItemPage</item>
+                <item name="catalog_category_view" xsi:type="string">CollectionPage</item>
+                <item name="catalogsearch_result_index" xsi:type="string">SearchResultsPage</item>
+                <item name="catalogsearch_advanced_result" xsi:type="string">SearchResultsPage</item>
+                <item name="contact_index_index" xsi:type="string">ContactPage</item>
+                <item name="checkout_cart_index" xsi:type="string">CheckoutPage</item>
+                <item name="checkout_index_index" xsi:type="string">CheckoutPage</item>
+                <item name="wishlist_index_index" xsi:type="string">CollectionPage</item>
+            </argument>
+            <argument name="default" xsi:type="string">WebPage</argument>
+        </arguments>
+    </type>
+
     <type name="MageObsidian\ModernFrontend\Service\ConfigManager">
         <arguments>
             <argument name="formatter" xsi:type="object">Magento\Framework\App\DeploymentConfig\Writer\PhpFormatter</argument>

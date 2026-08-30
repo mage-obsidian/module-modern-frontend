@@ -20,6 +20,7 @@
             <exclude>src/Test/Unit/ViewModel/ViteResolverTest.php</exclude>
             <exclude>src/Test/Unit/ViewModel/SchemaOrgTest.php</exclude>
             <exclude>src/Test/Unit/Model/SchemaOrg/CurrentPageSchemaProviderTest.php</exclude>
+            <exclude>src/Test/Unit/Model/SchemaOrg/SchemaOrgConfigTest.php</exclude>
             <exclude>src/Test/Unit/ViewModel/ImageTest.php</exclude>
             <exclude>src/Test/Unit/Block/I18nRuntimeTest.php</exclude>
             <exclude>src/Test/Unit/Block/IslandsRuntimeTest.php</exclude>
@@ -28,6 +29,8 @@
             <exclude>src/Test/Unit/Plugin/Deploy/Package/PackageFilePluginTest.php</exclude>
             <exclude>src/Test/Unit/Plugin/View/Asset/MinifyHtmlThemePluginTest.php</exclude>
             <exclude>src/Test/Unit/Plugin/View/Result/AsyncCssThemePluginTest.php</exclude>
+            <exclude>src/Test/Unit/Plugin/View/Page/Config/NonBlockingIncludesTest.php</exclude>
+            <exclude>src/Test/Unit/Service/Theme/ObsidianThemeDetectorTest.php</exclude>
             <exclude>src/Test/Unit/Plugin/Csp/ForceReportOnlyInHmrTest.php</exclude>
             <exclude>src/Test/Unit/Model/Config/ConfigProviderTest.php</exclude>
             <exclude>src/Test/Unit/Model/Config/Source/CheckoutLayoutTest.php</exclude>
