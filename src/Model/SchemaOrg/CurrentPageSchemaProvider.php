@@ -19,6 +19,7 @@ use Magento\Catalog\Pricing\Price\FinalPriceInterface;
 use Magento\Cms\Model\Page as CmsPage;
 use Magento\Directory\Model\RegionFactory;
 use Magento\Framework\App\Request\Http as HttpRequest;
+use Magento\Framework\Pricing\PriceCurrencyInterface;
 use Magento\Framework\Stdlib\DateTime\TimezoneInterface;
 use Magento\Framework\UrlInterface;
 use Magento\Framework\View\Page\Config as PageConfig;
@@ -67,7 +68,8 @@ class CurrentPageSchemaProvider
         private readonly WebSiteBuilder $webSiteBuilder,
         private readonly WebPageBuilder $webPageBuilder,
         private readonly BreadcrumbListBuilder $breadcrumbListBuilder,
-        private readonly ProductBuilder $productBuilder
+        private readonly ProductBuilder $productBuilder,
+        private readonly PriceCurrencyInterface $priceCurrency
     ) {
     }
 
@@ -393,7 +395,7 @@ class CurrentPageSchemaProvider
             'brand' => $this->resolveAttributeValue($product, SchemaOrgConfig::PRODUCT_BRAND_ATTRIBUTE, $storeId),
             'gtin' => $this->resolveAttributeValue($product, SchemaOrgConfig::PRODUCT_GTIN_ATTRIBUTE, $storeId),
             'mpn' => $this->resolveAttributeValue($product, SchemaOrgConfig::PRODUCT_MPN_ATTRIBUTE, $storeId),
-            'price' => $this->resolvePrice($product),
+            'price' => $this->resolvePrice($product, $lowPrice),
             'lowPrice' => $lowPrice,
             'highPrice' => $highPrice,
             'offerCount' => $lowPrice !== null && $highPrice !== null && $lowPrice !== $highPrice
@@ -495,14 +497,18 @@ class CurrentPageSchemaProvider
         return $url !== '' ? $url : null;
     }
 
-    private function resolvePrice(ProductInterface $product): ?float
+    private function resolvePrice(ProductInterface $product, ?float $rangePrice): ?float
     {
+        if ($rangePrice !== null) {
+            return $rangePrice;
+        }
+
         $price = method_exists($product, 'getFinalPrice') ? $product->getFinalPrice() : null;
         if ($price === null) {
             $price = $product->getPrice();
         }
 
-        return $price === null ? null : (float)$price;
+        return $price === null ? null : (float)$this->priceCurrency->convert((float)$price);
     }
 
     /**

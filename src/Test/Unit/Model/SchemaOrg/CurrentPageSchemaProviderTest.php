@@ -14,6 +14,7 @@ use Magento\Directory\Model\RegionFactory;
 use Magento\Framework\App\Request\Http as HttpRequest;
 use Magento\Catalog\Pricing\Price\FinalPrice;
 use Magento\Framework\Pricing\Amount\AmountInterface;
+use Magento\Framework\Pricing\PriceCurrencyInterface;
 use Magento\Framework\Pricing\PriceInfo\Base as PriceInfoBase;
 use Magento\Framework\Stdlib\DateTime\TimezoneInterface;
 use Magento\Framework\UrlInterface;
@@ -52,6 +53,8 @@ class CurrentPageSchemaProviderTest extends TestCase
     private TimezoneInterface&MockObject $timezone;
     private RegionFactory&MockObject $regionFactory;
     private Store&MockObject $store;
+    private PriceCurrencyInterface&MockObject $priceCurrency;
+    private float $currencyRate = 1.0;
     private CurrentPageSchemaProvider $provider;
 
     /** @var array<string,string|null> */
@@ -113,6 +116,12 @@ class CurrentPageSchemaProviderTest extends TestCase
         $this->config->method('getSameAs')->willReturnCallback(fn(?int $storeId = null): array => $this->sameAs);
         $this->config->method('getInLanguage')->willReturn('en-US');
 
+        $this->currencyRate = 1.0;
+        $this->priceCurrency = $this->createMock(PriceCurrencyInterface::class);
+        $this->priceCurrency->method('convert')->willReturnCallback(
+            fn(float $amount, $scope = null, $currency = null): float => $amount * $this->currencyRate
+        );
+
         $this->url->method('getCurrentUrl')->willReturn('https://acme.test/current');
         $this->timezone = $timezone;
         $this->regionFactory = $this->createMock(RegionFactory::class);
@@ -145,7 +154,8 @@ class CurrentPageSchemaProviderTest extends TestCase
             new WebSiteBuilder(),
             new WebPageBuilder(),
             new BreadcrumbListBuilder(),
-            new ProductBuilder()
+            new ProductBuilder(),
+            $this->priceCurrency
         );
     }
 
@@ -269,6 +279,41 @@ class CurrentPageSchemaProviderTest extends TestCase
 
         $this->assertSame('Offer', $offer['@type']);
         $this->assertSame('29.90', $offer['price']);
+    }
+
+    public function testConvertsAFallbackPriceIntoTheDisplayCurrency(): void
+    {
+        $this->currencyRate = 1.322;
+        $product = $this->buildProduct();
+
+        $this->logoPathResolver->method('getPath')->willReturn(null);
+        $this->catalogData->method('getBreadcrumbPath')->willReturn([]);
+        $this->catalogData->method('getProduct')->willReturn($product);
+        $this->imageHelper->method('init')->willReturnSelf();
+        $this->imageHelper->method('getUrl')->willReturn('');
+
+        $offer = $this->findNode($this->provider->getCurrentPageNodes(), 'Product')['offers'];
+
+        $this->assertSame('39.53', $offer['price']);
+        $this->assertSame('USD', $offer['priceCurrency']);
+    }
+
+    public function testNeverConvertsAPriceThePricingLayerAlreadyConverted(): void
+    {
+        $this->currencyRate = 1.322;
+        $product = $this->buildProduct();
+        $this->stubPriceRange($product, 13.22, 13.22);
+
+        $this->priceCurrency->expects($this->never())->method('convert');
+        $this->logoPathResolver->method('getPath')->willReturn(null);
+        $this->catalogData->method('getBreadcrumbPath')->willReturn([]);
+        $this->catalogData->method('getProduct')->willReturn($product);
+        $this->imageHelper->method('init')->willReturnSelf();
+        $this->imageHelper->method('getUrl')->willReturn('');
+
+        $offer = $this->findNode($this->provider->getCurrentPageNodes(), 'Product')['offers'];
+
+        $this->assertSame('13.22', $offer['price']);
     }
 
     public function testCountsChildProductsAsOfferCountOnAnAggregateOffer(): void
