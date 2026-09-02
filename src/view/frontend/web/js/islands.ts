@@ -7,8 +7,9 @@
  * is present, so pages without islands pay nothing — not even the Vue runtime.
  * The reusable discovery/hydration logic lives in the engine
  * (`mage-obsidian/runtime/islands.ts`); here we provide the concrete browser
- * side effects: dynamic component import, app creation, plugin wiring, and
- * viewport observation for the default "visible" (lazy) strategy.
+ * side effects: component resolution against the map the build generated, app
+ * creation, plugin wiring, and viewport observation for the default "visible"
+ * (lazy) strategy.
  *
  * A marker carrying the component's initial state is adopted with `createSSRApp`;
  * one whose contents are a placeholder is cleared and mounted with `createApp`.
@@ -16,7 +17,8 @@
  * warns each time it does, which buries the warnings that matter.
  */
 import type { App } from 'vue';
-import { hydrateAll, type IslandAnnouncement } from 'mage-obsidian/runtime/islands.ts';
+import { componentKey, hydrateAll, type IslandAnnouncement } from 'mage-obsidian/runtime/islands.ts';
+import islandComponents from 'mage-obsidian/runtime/islandComponents.ts';
 import { diffHydration, formatMismatch } from 'mage-obsidian/runtime/hydrationDiff.ts';
 import { LifecycleEvent, type IslandEvent } from 'mage-obsidian/runtime/lifecycleEvents.ts';
 import { MutationPhase } from 'mage-obsidian/runtime/mutationEvent.ts';
@@ -52,7 +54,7 @@ function observeOnce(element: HTMLElement, onVisible: () => void): void {
 
 function islandName(marker: HTMLElement): string {
     const source = marker.dataset.component ?? '(unknown)';
-    const path = source.split('/generated/')[1]?.replace(/\.js(\?.*)?$/, '');
+    const path = componentKey(source);
     if (!path) {
         return source;
     }
@@ -130,9 +132,7 @@ async function start(): Promise<void> {
     ]);
 
     hydrateAll(markers, {
-        // The component URL is only known at runtime (PHP resolves it per island),
-        // so this is an intentionally un-analyzable dynamic import.
-        importComponent: (source: string) => import(/* @vite-ignore */ source),
+        resolveComponent: (name: string) => islandComponents[name],
         createApp: (component: unknown, props: Record<string, unknown>, hydrate: boolean) =>
             (hydrate ? createSSRApp : createApp)(component as Parameters<typeof createApp>[0], props),
         clearContainer: (element: HTMLElement) => {
