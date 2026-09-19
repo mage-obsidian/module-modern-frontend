@@ -205,4 +205,12 @@
             </argument>
         </arguments>
     </type>
+
+    <type name="MageObsidian\ModernFrontend\Service\Cms\ContentExporter">
+        <arguments>
+            <argument name="ignoredClassPrefixes" xsi:type="array">
+                <item name="pagebuilder" xsi:type="string">pagebuilder-</item>
+            </argument>
+        </arguments>
+    </type>
 </config>

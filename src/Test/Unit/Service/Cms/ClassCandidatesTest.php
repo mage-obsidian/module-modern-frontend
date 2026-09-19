@@ -58,6 +58,22 @@ class ClassCandidatesTest extends TestCase
         $this->assertSame([], ClassCandidates::extract('Just a sentence.'));
     }
 
+    public function testDropsClassesWithAnIgnoredPrefix(): void
+    {
+        $this->assertSame(
+            ['p-4'],
+            ClassCandidates::extract('<div class="pagebuilder-mobile-hidden p-4"></div>', ['pagebuilder-'])
+        );
+    }
+
+    public function testKeepsEverythingWithoutPrefixes(): void
+    {
+        $this->assertSame(
+            ['p-4', 'pagebuilder-mobile-hidden'],
+            ClassCandidates::extract('<div class="pagebuilder-mobile-hidden p-4"></div>')
+        );
+    }
+
     public function testMergeIsSortedAndDeduplicated(): void
     {
         $this->assertSame(

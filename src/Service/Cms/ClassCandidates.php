@@ -31,7 +31,7 @@ class ClassCandidates
      *
      * @return string[] Sorted and unique, so two extractions of the same content compare equal.
      */
-    public static function extract(string $html): array
+    public static function extract(string $html, array $ignoredPrefixes = []): array
     {
         // A widget stores its parameters escaped, so a class list nested inside
         // one reads `class=&quot;p-4&quot;` and no quote-delimited match finds
@@ -39,7 +39,18 @@ class ClassCandidates
         // picked up from escaped sample markup only means one more rule.
         $candidates = self::scan($html) + self::scan(html_entity_decode($html, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
 
-        $candidates = array_keys($candidates);
+        $candidates = array_values(array_filter(
+            array_keys($candidates),
+            static function (string $class) use ($ignoredPrefixes): bool {
+                foreach ($ignoredPrefixes as $prefix) {
+                    if (str_starts_with($class, $prefix)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+        ));
         sort($candidates);
 
         return $candidates;

@@ -32,7 +32,7 @@ class ContentExporterTest extends TestCase
     {
         $this->written = [];
 
-        $this->fileDriver = $this->createMock(File::class);
+        $this->fileDriver = $this->createStub(File::class);
         $this->fileDriver->method('isExists')->willReturn(false);
         $this->fileDriver->method('isDirectory')->willReturn(true);
         $this->fileDriver->method('filePutContents')
@@ -47,16 +47,17 @@ class ContentExporterTest extends TestCase
      * @param array<int, array{string, string, bool}> $pages
      * @param array<int, array{string, string, bool}> $blocks
      */
-    private function exporter(array $pages, array $blocks = []): ContentExporter
+    private function exporter(array $pages, array $blocks = [], array $ignored = []): ContentExporter
     {
-        $directoryList = $this->createMock(DirectoryList::class);
+        $directoryList = $this->createStub(DirectoryList::class);
         $directoryList->method('getPath')->willReturn('/var');
 
         return new ContentExporter(
             $this->collectionFactory(PageCollectionFactory::class, PageCollection::class, Page::class, $pages),
             $this->collectionFactory(BlockCollectionFactory::class, BlockCollection::class, Block::class, $blocks),
             $directoryList,
-            $this->fileDriver
+            $this->fileDriver,
+            $ignored
         );
     }
 
@@ -64,17 +65,17 @@ class ContentExporterTest extends TestCase
     {
         $items = [];
         foreach ($rows as [$identifier, $content, $skip]) {
-            $item = $this->createMock($model);
+            $item = $this->createStub($model);
             $item->method('getIdentifier')->willReturn($identifier);
             $item->method('getContent')->willReturn($content);
-            $item->method('getData')->with(ContentExporter::SKIP_FLAG)->willReturn($skip ? 1 : 0);
+            $item->method('getData')->willReturn($skip ? 1 : 0);
             $items[] = $item;
         }
 
-        $collectionMock = $this->createMock($collection);
+        $collectionMock = $this->createStub($collection);
         $collectionMock->method('getIterator')->willReturn(new ArrayIterator($items));
 
-        $factoryMock = $this->createMock($factory);
+        $factoryMock = $this->createStub($factory);
         $factoryMock->method('create')->willReturn($collectionMock);
 
         return $factoryMock;
@@ -142,5 +143,19 @@ class ContentExporterTest extends TestCase
         $this->assertStringNotContainsString('/', $name);
         $this->assertStringNotContainsString('.', $name);
         $this->assertNotSame(ContentExporter::fileName('etc-env-php'), $name);
+    }
+
+    public function testCollectingDropsIgnoredPrefixes(): void
+    {
+        $exporter = $this->exporter([['home', '<div class="pagebuilder-column p-4"></div>', false]], [], ['pagebuilder-']);
+
+        $this->assertSame(['p-4'], $exporter->collectCandidates());
+    }
+
+    public function testExportingDropsIgnoredPrefixes(): void
+    {
+        $exporter = $this->exporter([['home', '<div class="pagebuilder-column p-4"></div>', false]], [], ['pagebuilder-']);
+
+        $this->assertSame(['p-4'], $exporter->export()['candidates']);
     }
 }

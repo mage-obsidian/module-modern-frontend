@@ -40,7 +40,8 @@ class ContentExporter
         private readonly PageCollectionFactory $pageCollectionFactory,
         private readonly BlockCollectionFactory $blockCollectionFactory,
         private readonly DirectoryList $directoryList,
-        private readonly File $fileDriver
+        private readonly File $fileDriver,
+        private readonly array $ignoredClassPrefixes = []
     ) {
     }
 
@@ -65,7 +66,7 @@ class ContentExporter
                 }
                 $this->write($root . DIRECTORY_SEPARATOR . $dir, $identifier, $content);
                 $written[$dir]++;
-                $candidates[] = ClassCandidates::extract($content);
+                $candidates[] = ClassCandidates::extract($content, $this->ignoredClassPrefixes);
             }
         }
 
@@ -95,7 +96,7 @@ class ContentExporter
         foreach ([$this->pages(), $this->blocks()] as $rows) {
             foreach ($rows as $content) {
                 if ($content !== null) {
-                    $candidates[] = ClassCandidates::extract($content);
+                    $candidates[] = ClassCandidates::extract($content, $this->ignoredClassPrefixes);
                 }
             }
         }
