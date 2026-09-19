@@ -47,13 +47,45 @@ const config = (over = {}) => ({
     ...over,
 });
 
-function run({ sections, syncedVersion = "v1", cookie = `${VERSION_COOKIE}=v1; ${SESSION_COOKIE}=abc`, ...over }) {
+function run({ sections, syncedVersion = "v1", cookie = `${VERSION_COOKIE}=v1; ${SESSION_COOKIE}=abc`, constructable = false, ...over }) {
     const attributes = {};
     const properties = {};
     const css = [];
+    let created = 0;
+    const existing = { text: "existing" };
     const storage = {
         [STORAGE_KEY]: sections === undefined ? undefined : JSON.stringify(sections),
         [VERSION_KEY]: syncedVersion,
+    };
+
+    const document = {
+        cookie,
+        createElement: () => {
+            created++;
+            return {
+                children: [],
+                setAttribute: () => {},
+                appendChild(node) {
+                    this.children.push(node);
+                },
+            };
+        },
+        createTextNode: (text) => ({ text }),
+        head: {
+            appendChild: (node) => {
+                css.push(node.children.map((child) => child.text).join(""));
+            },
+        },
+        documentElement: {
+            setAttribute: (name, value) => {
+                attributes[name] = value;
+            },
+            style: {
+                setProperty: (name, value) => {
+                    properties[name] = value;
+                },
+            },
+        },
     };
 
     const scope = {
@@ -61,33 +93,17 @@ function run({ sections, syncedVersion = "v1", cookie = `${VERSION_COOKIE}=v1; $
         localStorage: {
             getItem: (key) => (storage[key] === undefined ? null : storage[key]),
         },
-        document: {
-            cookie,
-            createElement: () => ({
-                children: [],
-                setAttribute: () => {},
-                appendChild(node) {
-                    this.children.push(node);
-                },
-            }),
-            createTextNode: (text) => ({ text }),
-            head: {
-                appendChild: (node) => {
-                    css.push(node.children.map((child) => child.text).join(""));
-                },
-            },
-            documentElement: {
-                setAttribute: (name, value) => {
-                    attributes[name] = value;
-                },
-                style: {
-                    setProperty: (name, value) => {
-                        properties[name] = value;
-                    },
-                },
-            },
-        },
+        document,
     };
+
+    if (constructable) {
+        scope.CSSStyleSheet = class {
+            replaceSync(text) {
+                this.text = text;
+            }
+        };
+        document.adoptedStyleSheets = [existing];
+    }
 
     new Function("window", SOURCE)(scope);
 
@@ -95,6 +111,9 @@ function run({ sections, syncedVersion = "v1", cookie = `${VERSION_COOKIE}=v1; $
         attributes,
         properties,
         css: css.join(""),
+        created,
+        adopted: document.adoptedStyleSheets ?? [],
+        existing,
         published: Object.keys(attributes).length > 0,
     };
 }
@@ -253,5 +272,25 @@ describe("pre-paint stylesheet", () => {
 
     it("draws nothing for an empty counter", () => {
         expect(run({ sections: { cart: { summary_count: 0 } } }).css).toBe("");
+    });
+
+    it("adopts the counter rules without creating a style element when the browser can", () => {
+        const { adopted, created, css, existing } = run({
+            sections: { cart: { summary_count: 2 } },
+            constructable: true,
+        });
+
+        expect(created).toBe(0);
+        expect(css).toBe("");
+        expect(adopted[0]).toBe(existing);
+        expect(adopted).toHaveLength(2);
+        expect(adopted[1].text).toContain('::after{content:"2"}');
+    });
+
+    it("falls back to a style element when constructable stylesheets are missing", () => {
+        const { created, css } = run({ sections: { cart: { summary_count: 2 } } });
+
+        expect(created).toBe(1);
+        expect(css).toContain('::after{content:"2"}');
     });
 });

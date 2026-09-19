@@ -124,11 +124,32 @@
         }
     }
 
-    if (rules.length && doc.head) {
-        var style = doc.createElement("style");
-        style.setAttribute("data-mo-prepaint", "");
-        style.appendChild(doc.createTextNode(rules.join("")));
-        doc.head.appendChild(style);
+    function adopt(text) {
+        var Sheet = scope.CSSStyleSheet;
+        if (typeof Sheet !== "function" || !("adoptedStyleSheets" in doc)) {
+            return false;
+        }
+        try {
+            var sheet = new Sheet();
+            if (typeof sheet.replaceSync !== "function") {
+                return false;
+            }
+            sheet.replaceSync(text);
+            doc.adoptedStyleSheets = Array.prototype.slice.call(doc.adoptedStyleSheets).concat([sheet]);
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    if (rules.length) {
+        var text = rules.join("");
+        if (!adopt(text) && doc.head) {
+            var style = doc.createElement("style");
+            style.setAttribute("data-mo-prepaint", "");
+            style.appendChild(doc.createTextNode(text));
+            doc.head.appendChild(style);
+        }
     }
 
     var flags = config.flags instanceof Array ? config.flags : [];
