@@ -70,8 +70,7 @@ class TailwindCli
             return '';
         }
 
-        $process = new Process([$this->getBinaryPath(), '--help']);
-        $process->setTimeout(self::TIMEOUT);
+        $process = $this->createProcess([$this->getBinaryPath(), '--help']);
         $process->run();
         preg_match('~tailwindcss v([\d.]+)~', $process->getOutput() . $process->getErrorOutput(), $matches);
 
@@ -81,13 +80,14 @@ class TailwindCli
     /**
      * @param string[] $classes Class names to generate rules for.
      * @param string $themeSourceCss Absolute path to the theme's `theme.source.css`.
-     *
-     * @return string The generated CSS, or an empty string if nothing could be produced.
      */
-    public function compile(array $classes, string $themeSourceCss): string
+    public function compile(array $classes, string $themeSourceCss): ?string
     {
-        if ($classes === [] || !$this->isAvailable()) {
+        if ($classes === []) {
             return '';
+        }
+        if (!$this->isAvailable()) {
+            return null;
         }
 
         $work = $this->directoryList->getPath(DirectoryList::VAR_DIR)
@@ -103,8 +103,7 @@ class TailwindCli
             $this->fileDriver->filePutContents($content, self::asMarkup($classes));
             $this->fileDriver->filePutContents($input, self::inputCss($themeSourceCss, $content));
 
-            $process = new Process([$this->getBinaryPath(), '-i', $input, '-o', $output]);
-            $process->setTimeout(self::TIMEOUT);
+            $process = $this->createProcess([$this->getBinaryPath(), '-i', $input, '-o', $output]);
             $process->run();
 
             if (!$process->isSuccessful()) {
@@ -113,19 +112,36 @@ class TailwindCli
                     . trim($process->getErrorOutput() ?: $process->getOutput())
                 );
 
-                return '';
+                return null;
             }
 
             return (string)$this->fileDriver->fileGetContents($output);
         } catch (Throwable $e) {
             $this->logger->warning('MageObsidian: could not compile the CMS delta: ' . $e->getMessage());
 
-            return '';
+            return null;
         } finally {
-            foreach ([$content, $input, $output] as $tmp) {
-                if ($this->fileDriver->isExists($tmp)) {
-                    $this->fileDriver->deleteFile($tmp);
+            $this->removeTemporaryFiles([$content, $input, $output]);
+        }
+    }
+
+    protected function createProcess(array $command): Process
+    {
+        $process = new Process($command);
+        $process->setTimeout(self::TIMEOUT);
+
+        return $process;
+    }
+
+    private function removeTemporaryFiles(array $paths): void
+    {
+        foreach ($paths as $path) {
+            try {
+                if ($this->fileDriver->isExists($path)) {
+                    $this->fileDriver->deleteFile($path);
                 }
+            } catch (Throwable $e) {
+                $this->logger->warning('MageObsidian: could not remove a CMS delta work file: ' . $e->getMessage());
             }
         }
     }

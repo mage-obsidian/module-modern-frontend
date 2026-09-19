@@ -174,8 +174,18 @@ class DeltaStylesheet
         $delta = array_values(array_diff($candidates, $this->baseline->read($theme)));
         sort($delta);
 
-        $css = $delta === [] ? '' : $this->tailwind->compile($delta, $this->themeSourceCss($theme));
         $themeKey = self::themeKey($theme);
+        $css = $delta === [] ? '' : $this->tailwind->compile($delta, $this->themeSourceCss($theme));
+        if ($css === null) {
+            if ($this->tailwind->isAvailable()) {
+                $this->logger->warning(sprintf(
+                    'MageObsidian: the CMS delta for %s could not be compiled; the previous stylesheet stays in place.',
+                    (string)$theme->getCode()
+                ));
+            }
+
+            return $this->state($themeKey);
+        }
 
         $result = [
             'classes' => count($delta),

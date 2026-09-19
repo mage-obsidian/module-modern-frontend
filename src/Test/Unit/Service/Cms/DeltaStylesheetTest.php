@@ -21,7 +21,7 @@ use MageObsidian\ModernFrontend\Service\Cms\CmsBaseline;
 use MageObsidian\ModernFrontend\Service\Cms\ContentExporter;
 use MageObsidian\ModernFrontend\Service\Cms\DeltaStylesheet;
 use MageObsidian\ModernFrontend\Service\Cms\TailwindCli;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
@@ -33,13 +33,14 @@ use Psr\Log\LoggerInterface;
  */
 class DeltaStylesheetTest extends TestCase
 {
-    private ContentExporter&MockObject $exporter;
-    private CmsBaseline&MockObject $baseline;
-    private TailwindCli&MockObject $tailwind;
-    private CacheInterface&MockObject $cache;
-    private LockManagerInterface&MockObject $lockManager;
-    private WriteInterface&MockObject $mediaWrite;
-    private ReadInterface&MockObject $mediaRead;
+    private ContentExporter&Stub $exporter;
+    private CmsBaseline&Stub $baseline;
+    private TailwindCli&Stub $tailwind;
+    private CacheInterface&Stub $cache;
+    private LockManagerInterface&Stub $lockManager;
+    private WriteInterface&Stub $mediaWrite;
+    private ReadInterface&Stub $mediaRead;
+    private LoggerInterface&Stub $logger;
 
     /** @var array<string, string> */
     private array $written = [];
@@ -47,14 +48,14 @@ class DeltaStylesheetTest extends TestCase
     protected function setUp(): void
     {
         $this->written = [];
-        $this->exporter = $this->createMock(ContentExporter::class);
-        $this->baseline = $this->createMock(CmsBaseline::class);
-        $this->tailwind = $this->createMock(TailwindCli::class);
-        $this->cache = $this->createMock(CacheInterface::class);
-        $this->lockManager = $this->createMock(LockManagerInterface::class);
+        $this->exporter = $this->createStub(ContentExporter::class);
+        $this->baseline = $this->createStub(CmsBaseline::class);
+        $this->tailwind = $this->createStub(TailwindCli::class);
+        $this->cache = $this->createStub(CacheInterface::class);
+        $this->lockManager = $this->createStub(LockManagerInterface::class);
         $this->lockManager->method('lock')->willReturn(true);
 
-        $this->mediaWrite = $this->createMock(WriteInterface::class);
+        $this->mediaWrite = $this->createStub(WriteInterface::class);
         $this->mediaWrite->method('writeFile')->willReturnCallback(
             function (string $path, string $contents): int {
                 $this->written[$path] = $contents;
@@ -62,36 +63,37 @@ class DeltaStylesheetTest extends TestCase
                 return strlen($contents);
             }
         );
-        $this->mediaRead = $this->createMock(ReadInterface::class);
+        $this->mediaRead = $this->createStub(ReadInterface::class);
+        $this->logger = $this->createStub(LoggerInterface::class);
     }
 
     private function service(): DeltaStylesheet
     {
-        $theme = $this->createMock(ThemeInterface::class);
+        $theme = $this->createStub(ThemeInterface::class);
         $theme->method('getCode')->willReturn('Vendor/theme');
         $theme->method('getId')->willReturn(1);
 
-        $store = $this->createMock(StoreInterface::class);
+        $store = $this->createStub(StoreInterface::class);
         $store->method('getId')->willReturn(1);
-        $storeManager = $this->createMock(StoreManagerInterface::class);
+        $storeManager = $this->createStub(StoreManagerInterface::class);
         $storeManager->method('getStores')->willReturn([$store]);
 
-        $scopeConfig = $this->createMock(ScopeConfigInterface::class);
+        $scopeConfig = $this->createStub(ScopeConfigInterface::class);
         $scopeConfig->method('getValue')->willReturn('1');
 
-        $themeProvider = $this->createMock(ThemeProviderInterface::class);
+        $themeProvider = $this->createStub(ThemeProviderInterface::class);
         $themeProvider->method('getThemeById')->willReturn($theme);
 
-        $filesystem = $this->createMock(Filesystem::class);
+        $filesystem = $this->createStub(Filesystem::class);
         $filesystem->method('getDirectoryWrite')->willReturn($this->mediaWrite);
         $filesystem->method('getDirectoryRead')->willReturn($this->mediaRead);
 
-        $asset = $this->createMock(AssetFile::class);
+        $asset = $this->createStub(AssetFile::class);
         $asset->method('getSourceFile')->willReturn('/theme/web/css/theme.source.css');
-        $assetRepository = $this->createMock(Repository::class);
+        $assetRepository = $this->createStub(Repository::class);
         $assetRepository->method('createAsset')->willReturn($asset);
 
-        $appState = $this->createMock(State::class);
+        $appState = $this->createStub(State::class);
         $appState->method('emulateAreaCode')->willReturnCallback(
             static fn (string $area, callable $callback) => $callback()
         );
@@ -102,14 +104,14 @@ class DeltaStylesheetTest extends TestCase
             $this->tailwind,
             $filesystem,
             $assetRepository,
-            $this->createMock(DesignInterface::class),
+            $this->createStub(DesignInterface::class),
             $themeProvider,
             $storeManager,
             $scopeConfig,
             $appState,
             $this->cache,
             $this->lockManager,
-            $this->createMock(LoggerInterface::class)
+            $this->logger
         );
     }
 
@@ -122,6 +124,7 @@ class DeltaStylesheetTest extends TestCase
     {
         $this->exporter->method('collectCandidates')->willReturn(['bg-red-500', 'p-4', 'text-sm']);
         $this->baseline->method('read')->willReturn(['p-4', 'text-sm', 'flex']);
+        $this->tailwind = $this->createMock(TailwindCli::class);
         $this->tailwind->expects($this->once())
             ->method('compile')
             ->with(['bg-red-500'], '/theme/web/css/theme.source.css')
@@ -139,6 +142,7 @@ class DeltaStylesheetTest extends TestCase
     {
         $this->exporter->method('collectCandidates')->willReturn(['p-4', 'text-sm']);
         $this->baseline->method('read')->willReturn(['p-4', 'text-sm', 'flex']);
+        $this->tailwind = $this->createMock(TailwindCli::class);
         $this->tailwind->expects($this->never())->method('compile');
 
         $result = $this->service()->regenerate();
@@ -163,9 +167,10 @@ class DeltaStylesheetTest extends TestCase
 
     public function testDoesNotTouchTheDatabaseWhileAnotherProcessHoldsTheLock(): void
     {
-        $lockManager = $this->createMock(LockManagerInterface::class);
+        $lockManager = $this->createStub(LockManagerInterface::class);
         $lockManager->method('lock')->willReturn(false);
         $this->lockManager = $lockManager;
+        $this->exporter = $this->createMock(ContentExporter::class);
         $this->exporter->expects($this->never())->method('collectCandidates');
         $this->cache->method('load')->willReturn(json_encode(['classes' => 4, 'bytes' => 900, 'hash' => 'abc']));
 
@@ -177,6 +182,7 @@ class DeltaStylesheetTest extends TestCase
 
     public function testFallsBackToTheFileWhenTheCacheWasFlushed(): void
     {
+        $this->cache = $this->createMock(CacheInterface::class);
         $this->cache->method('load')->willReturn(false);
         $this->mediaRead->method('isExist')->willReturn(true);
         $this->mediaRead->method('readFile')->willReturn(
@@ -203,5 +209,138 @@ class DeltaStylesheetTest extends TestCase
         $this->baseline->method('exists')->willReturn(false);
 
         $this->assertFalse($this->service()->hasBaseline());
+    }
+
+    private function serviceWithThemes(array $codes): DeltaStylesheet
+    {
+        $stores = [];
+        $themes = [];
+        foreach (array_values($codes) as $index => $code) {
+            $id = $index + 1;
+            $store = $this->createStub(StoreInterface::class);
+            $store->method('getId')->willReturn($id);
+            $stores[] = $store;
+            $theme = $this->createStub(ThemeInterface::class);
+            $theme->method('getCode')->willReturn($code);
+            $theme->method('getId')->willReturn($id);
+            $themes[$id] = $theme;
+        }
+        $storeManager = $this->createStub(StoreManagerInterface::class);
+        $storeManager->method('getStores')->willReturn($stores);
+
+        $scopeConfig = $this->createStub(ScopeConfigInterface::class);
+        $scopeConfig->method('getValue')->willReturnCallback(
+            static fn (string $path, string $scope, int $storeId): string => (string)$storeId
+        );
+
+        $themeProvider = $this->createStub(ThemeProviderInterface::class);
+        $themeProvider->method('getThemeById')->willReturnCallback(static fn (int $id) => $themes[$id]);
+
+        $filesystem = $this->createStub(Filesystem::class);
+        $filesystem->method('getDirectoryWrite')->willReturn($this->mediaWrite);
+        $filesystem->method('getDirectoryRead')->willReturn($this->mediaRead);
+
+        $asset = $this->createStub(AssetFile::class);
+        $asset->method('getSourceFile')->willReturn('/theme/web/css/theme.source.css');
+        $assetRepository = $this->createStub(Repository::class);
+        $assetRepository->method('createAsset')->willReturn($asset);
+
+        $appState = $this->createStub(State::class);
+        $appState->method('emulateAreaCode')->willReturnCallback(
+            static fn (string $area, callable $callback) => $callback()
+        );
+
+        return new DeltaStylesheet(
+            $this->exporter,
+            $this->baseline,
+            $this->tailwind,
+            $filesystem,
+            $assetRepository,
+            $this->createStub(DesignInterface::class),
+            $themeProvider,
+            $storeManager,
+            $scopeConfig,
+            $appState,
+            $this->cache,
+            $this->lockManager,
+            $this->logger
+        );
+    }
+
+    public function testAFailedCompileKeepsThePreviousDeltaWhenTheCacheIsWarm(): void
+    {
+        $this->exporter->method('collectCandidates')->willReturn(['bg-red-500']);
+        $this->baseline->method('read')->willReturn([]);
+        $this->tailwind->method('compile')->willReturn(null);
+        $this->cache->method('load')->willReturn(
+            (string)json_encode(['classes' => 1, 'unresolved' => [], 'bytes' => 48, 'hash' => 'previous'])
+        );
+
+        $result = $this->service()->regenerate();
+
+        $this->assertSame([], $this->written);
+        $this->assertSame(48, $result['bytes']);
+    }
+
+    public function testAFailedCompileKeepsThePreviousDeltaWhenTheCacheIsCold(): void
+    {
+        $this->exporter->method('collectCandidates')->willReturn(['bg-red-500']);
+        $this->baseline->method('read')->willReturn([]);
+        $this->tailwind->method('compile')->willReturn(null);
+        $this->cache->method('load')->willReturn(false);
+        $this->mediaRead->method('isExist')->willReturn(true);
+        $this->mediaRead->method('readFile')->willReturn(
+            (string)json_encode(['classes' => 1, 'unresolved' => [], 'bytes' => 48, 'hash' => 'previous'])
+        );
+
+        $result = $this->service()->regenerate();
+
+        $this->assertSame([], $this->written);
+        $this->assertSame(48, $result['bytes']);
+    }
+
+    public function testStaysQuietWhenTheBinaryIsSimplyNotInstalled(): void
+    {
+        $this->exporter->method('collectCandidates')->willReturn(['bg-red-500']);
+        $this->baseline->method('read')->willReturn([]);
+        $this->tailwind->method('compile')->willReturn(null);
+        $this->tailwind->method('isAvailable')->willReturn(false);
+        $this->cache->method('load')->willReturn(false);
+        $this->mediaRead->method('isExist')->willReturn(false);
+        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->logger->expects($this->never())->method('warning');
+
+        $this->service()->regenerate();
+
+        $this->assertSame([], $this->written);
+    }
+
+    public function testWarnsWhenTheBinaryIsInstalledButCompilingFailed(): void
+    {
+        $this->exporter->method('collectCandidates')->willReturn(['bg-red-500']);
+        $this->baseline->method('read')->willReturn([]);
+        $this->tailwind->method('compile')->willReturn(null);
+        $this->tailwind->method('isAvailable')->willReturn(true);
+        $this->cache->method('load')->willReturn(false);
+        $this->mediaRead->method('isExist')->willReturn(false);
+        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->logger->expects($this->once())->method('warning');
+
+        $this->service()->regenerate();
+    }
+
+    public function testOneThemeFailingDoesNotStopTheNext(): void
+    {
+        $this->exporter->method('collectCandidates')->willReturn(['bg-red-500']);
+        $this->baseline->method('read')->willReturn([]);
+        $this->tailwind->method('compile')->willReturnOnConsecutiveCalls(null, '.bg-red-500{color:red}');
+        $this->cache->method('load')->willReturn(false);
+        $this->mediaRead->method('isExist')->willReturn(false);
+
+        $result = $this->serviceWithThemes(['Vendor/one', 'Vendor/two'])->regenerate();
+
+        $this->assertSame(2, $result['themes']);
+        $this->assertArrayNotHasKey('mage-obsidian/cms/Vendor_one/on-the-fly.css', $this->written);
+        $this->assertSame('.bg-red-500{color:red}', $this->written['mage-obsidian/cms/Vendor_two/on-the-fly.css']);
     }
 }
