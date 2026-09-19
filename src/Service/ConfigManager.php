@@ -101,7 +101,7 @@ class ConfigManager implements ConfigManagerInterface
             'modules' => $configModules,
             'themes' => $configThemes
         ];
-        $this->writeFile($this->getConfigFilePath()['php'], $this->formatter->format($baseConfig));
+        $phpContents = $this->formatter->format($baseConfig);
 
         $jsonConfig = [
             ...$baseConfig,
@@ -132,6 +132,7 @@ class ConfigManager implements ConfigManagerInterface
         }
 
         $this->assertValidContract($jsonForFile);
+        $this->writeFile($this->getConfigFilePath()['php'], $phpContents);
         $this->writeFile($this->getConfigFilePath()['json'], json_encode($jsonForFile, JSON_PRETTY_PRINT));
         $this->configData = $jsonConfig;
         return $this->configData;

@@ -10,42 +10,34 @@ namespace MageObsidian\ModernFrontend\Plugin\App\DeploymentConfig;
 
 use MageObsidian\ModernFrontend\Api\ConfigManagerInterface;
 use Magento\Framework\App\DeploymentConfig\Writer;
-use Magento\Framework\Exception\FileSystemException;
-use Magento\Framework\Exception\LocalizedException;
+use Magento\Framework\Config\File\ConfigFilePool;
+use Psr\Log\LoggerInterface;
+use Throwable;
 
 class WriterPlugin
 {
-    /**
-     * WriterPlugin constructor.
-     *
-     * @param ConfigManagerInterface $configManager
-     */
     public function __construct(
-        private readonly ConfigManagerInterface $configManager
+        private readonly ConfigManagerInterface $configManager,
+        private readonly LoggerInterface $logger
     ) {
     }
 
-    /**
-     * Regenerate the frontend contract whenever the deployment config is saved.
-     *
-     * Writer::saveConfig() is a void method, so the intercepted result is null;
-     * the parameter must stay untyped (not bool) and the value is propagated
-     * unchanged. Typing it `bool` made every saveConfig() call fatal — including
-     * deploy:mode:set, which writes the mode through this writer.
-     *
-     * @param Writer $subject
-     * @param mixed $result
-     *
-     * @return mixed
-     * @throws FileSystemException
-     * @throws LocalizedException
-     * @SuppressWarnings(PHPMD.UnusedFormalParameter)
-     */
-    public function afterSaveConfig(
-        Writer $subject,
-        mixed $result
-    ): mixed {
-        $this->configManager->generate();
+    public function afterSaveConfig(Writer $subject, mixed $result, array $data): mixed
+    {
+        if (!isset($data[ConfigFilePool::APP_CONFIG]['modules'])) {
+            return $result;
+        }
+
+        try {
+            $this->configManager->generate();
+        } catch (Throwable $e) {
+            $this->logger->warning(
+                'MageObsidian: the frontend contract was not regenerated after the module list changed ('
+                . $e->getMessage()
+                . '). Run bin/magento mage-obsidian:frontend:config --generate.'
+            );
+        }
+
         return $result;
     }
 }

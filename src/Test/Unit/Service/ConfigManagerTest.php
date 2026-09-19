@@ -9,6 +9,7 @@ use MageObsidian\ModernFrontend\Service\ConfigManager;
 use Magento\Framework\App\DeploymentConfig\Writer\FormatterInterface;
 use Magento\Framework\App\Filesystem\DirectoryList;
 use Magento\Framework\App\State;
+use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Filesystem\DriverInterface;
 use Magento\Framework\Module\Dir\Reader as ModuleDirReader;
 use Magento\Framework\Module\ModuleList as MagentoModuleList;
@@ -138,9 +139,9 @@ class ConfigManagerTest extends TestCase
                 'data' => ['features' => ['universal' => 'true']],
             ],
         ];
-        $moduleList = $this->createMock(ModuleListInterface::class);
+        $moduleList = $this->createStub(ModuleListInterface::class);
         $moduleList->method('getAllEnabled')->willReturn($modules);
-        $themeList = $this->createMock(ThemeListInterface::class);
+        $themeList = $this->createStub(ThemeListInterface::class);
         $themeList->method('getAllEnabled')->willReturn([]);
 
         $manager = $this->buildManagerWith($moduleList, $themeList, ['Vendor_Universal'], 'developer');
@@ -158,12 +159,12 @@ class ConfigManagerTest extends TestCase
         // getAllEnabled is called once by generate() and again by detectDrift();
         // returning a larger set the second time simulates a module enabled
         // after the contract was written.
-        $moduleList = $this->createMock(ModuleListInterface::class);
+        $moduleList = $this->createStub(ModuleListInterface::class);
         $moduleList->method('getAllEnabled')->willReturnOnConsecutiveCalls(
             ['Vendor_Mod' => ['path' => '/src/Vendor/Mod']],
             ['Vendor_Mod' => ['path' => '/src/Vendor/Mod'], 'Vendor_New' => ['path' => '/src/Vendor/New']]
         );
-        $themeList = $this->createMock(ThemeListInterface::class);
+        $themeList = $this->createStub(ThemeListInterface::class);
         $themeList->method('getAllEnabled')->willReturn([]);
 
         $manager = $this->buildManagerWith($moduleList, $themeList, ['Vendor_Mod'], 'developer');
@@ -176,6 +177,25 @@ class ConfigManagerTest extends TestCase
         $this->assertSame([], $drift['themes']['added']);
     }
 
+    public function testAnInvalidContractWritesNeitherFile(): void
+    {
+        $manager = $this->buildManager(
+            modules: ['Vendor_Mod' => ['path' => 123]],
+            themes: [],
+            allModules: ['Vendor_Mod'],
+            mode: 'production'
+        );
+
+        try {
+            $manager->generate();
+            $this->fail('An invalid contract must not be generated.');
+        } catch (LocalizedException $e) {
+            $this->assertStringContainsString('failed schema validation', $e->getMessage());
+        }
+
+        $this->assertSame([], $this->writes);
+    }
+
     /**
      * @param array<string, array> $modules
      * @param array<string, array> $themes
@@ -183,9 +203,9 @@ class ConfigManagerTest extends TestCase
      */
     private function buildManager(array $modules, array $themes, array $allModules, string $mode): ConfigManager
     {
-        $moduleList = $this->createMock(ModuleListInterface::class);
+        $moduleList = $this->createStub(ModuleListInterface::class);
         $moduleList->method('getAllEnabled')->willReturn($modules);
-        $themeList = $this->createMock(ThemeListInterface::class);
+        $themeList = $this->createStub(ThemeListInterface::class);
         $themeList->method('getAllEnabled')->willReturn($themes);
 
         return $this->buildManagerWith($moduleList, $themeList, $allModules, $mode);
@@ -200,13 +220,13 @@ class ConfigManagerTest extends TestCase
         array $allModules,
         string $mode
     ): ConfigManager {
-        $magentoModuleList = $this->createMock(MagentoModuleList::class);
+        $magentoModuleList = $this->createStub(MagentoModuleList::class);
         $magentoModuleList->method('getNames')->willReturn($allModules);
 
-        $directoryList = $this->createMock(DirectoryList::class);
+        $directoryList = $this->createStub(DirectoryList::class);
         $directoryList->method('getPath')->willReturn(self::ROOT);
 
-        $driver = $this->createMock(DriverInterface::class);
+        $driver = $this->createStub(DriverInterface::class);
         $driver->method('filePutContents')->willReturnCallback(function (string $path, string $data): int {
             $this->writes[$path] = $data;
             return strlen($data);
@@ -216,13 +236,13 @@ class ConfigManagerTest extends TestCase
             fn(string $path): string => str_contains($path, 'schema') ? $this->schemaJson : ''
         );
 
-        $formatter = $this->createMock(FormatterInterface::class);
+        $formatter = $this->createStub(FormatterInterface::class);
         $formatter->method('format')->willReturn('<?php return [];');
 
-        $state = $this->createMock(State::class);
+        $state = $this->createStub(State::class);
         $state->method('getMode')->willReturn($mode);
 
-        $moduleDirReader = $this->createMock(ModuleDirReader::class);
+        $moduleDirReader = $this->createStub(ModuleDirReader::class);
         $moduleDirReader->method('getModuleDir')->willReturn('/module/etc');
 
         return new ConfigManager(
@@ -234,7 +254,7 @@ class ConfigManagerTest extends TestCase
             $formatter,
             $state,
             $moduleDirReader,
-            $this->createMock(LoggerInterface::class)
+            $this->createStub(LoggerInterface::class)
         );
     }
 }
