@@ -4,7 +4,7 @@
     <default>
         <mage_obsidian>
             <hmr>
-                <enabled>1</enabled>
+                <enabled>0</enabled>
             </hmr>
             <dev_server>
                 <host>localhost</host>
