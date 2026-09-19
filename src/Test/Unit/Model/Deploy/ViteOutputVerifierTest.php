@@ -266,6 +266,47 @@ class ViteOutputVerifierTest extends TestCase
         $this->assertSame(self::THEME, $target->theme);
     }
 
+    public function testNamesAThemeWhoseBuildDirectoryDoesNotExist(): void
+    {
+        $verifier = $this->verifier(built: null, published: []);
+
+        $this->assertSame([self::THEME], $verifier->findUnbuilt($this->options(['en_US'])));
+    }
+
+    public function testNamesAThemeWhoseBuildDirectoryIsEmpty(): void
+    {
+        $verifier = $this->verifier(built: [], published: []);
+
+        $this->assertSame([self::THEME], $verifier->findUnbuilt($this->options(['en_US'])));
+    }
+
+    public function testHiddenFilesAloneAreNotABuild(): void
+    {
+        $verifier = $this->verifier(built: ['.vite/manifest.json'], published: []);
+
+        $this->assertSame([self::THEME], $verifier->findUnbuilt($this->options(['en_US'])));
+    }
+
+    public function testABuildWithAManifestBesideItsFilesIsABuild(): void
+    {
+        $verifier = $this->verifier(built: ['lib/vue.js', '.vite/manifest.json'], published: []);
+
+        $this->assertSame([], $verifier->findUnbuilt($this->options(['en_US'])));
+    }
+
+    public function testAnExcludedThemeIsNeverReportedUnbuilt(): void
+    {
+        $verifier = $this->verifier(built: null, published: [], targets: $this->realTargets(['en_US']));
+
+        $this->assertSame(
+            [],
+            $verifier->findUnbuilt([
+                DeployStaticOptions::LANGUAGE => ['en_US'],
+                DeployStaticOptions::EXCLUDE_THEME => [self::THEME],
+            ])
+        );
+    }
+
     /**
      * @param array<string, ViteOutputTarget> $outdated
      * @return array<string, string[]>
@@ -292,11 +333,11 @@ class ViteOutputVerifierTest extends TestCase
      */
     private function realTargets(array $usedLocales): DeployTargets
     {
-        $localeResolver = $this->createMock(LocaleResolver::class);
+        $localeResolver = $this->createStub(LocaleResolver::class);
         $localeResolver->method('getUsedPackageLocales')->willReturn($usedLocales);
 
-        $packageFactory = $this->createMock(PackageFactory::class);
-        $packageFactory->method('create')->willReturn($this->createMock(Package::class));
+        $packageFactory = $this->createStub(PackageFactory::class);
+        $packageFactory->method('create')->willReturn($this->createStub(Package::class));
 
         return new DeployTargets($localeResolver, $packageFactory);
     }
@@ -323,14 +364,14 @@ class ViteOutputVerifierTest extends TestCase
             $themes[self::PARENT_THEME] = ['src' => self::PARENT_SRC, 'parent' => null];
         }
 
-        $configManager = $this->createMock(ConfigManagerInterface::class);
+        $configManager = $this->createStub(ConfigManagerInterface::class);
         $configManager->method('get')->willReturn(['themes' => $themes]);
 
-        $directoryList = $this->createMock(DirectoryList::class);
+        $directoryList = $this->createStub(DirectoryList::class);
         $directoryList->method('getPath')->willReturn(self::ROOT . '/pub/static');
 
         $sourceDir = self::SRC . '/web/generated';
-        $driver = $this->createMock(DriverInterface::class);
+        $driver = $this->createStub(DriverInterface::class);
 
         $driver->method('isDirectory')->willReturnCallback(
             static function (string $path) use ($sourceDir, $built, $directories): bool {

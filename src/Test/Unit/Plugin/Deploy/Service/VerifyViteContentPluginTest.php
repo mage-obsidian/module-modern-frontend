@@ -11,6 +11,7 @@ namespace MageObsidian\ModernFrontend\Test\Unit\Plugin\Deploy\Service;
 
 use Magento\Deploy\Console\DeployStaticOptions;
 use Magento\Deploy\Service\DeployStaticContent;
+use Magento\Framework\Exception\LocalizedException;
 use MageObsidian\ModernFrontend\Model\Deploy\ViteOutputPublisher;
 use MageObsidian\ModernFrontend\Model\Deploy\ViteOutputTarget;
 use MageObsidian\ModernFrontend\Model\Deploy\ViteOutputVerifier;
@@ -25,6 +26,11 @@ class VerifyViteContentPluginTest extends TestCase
     protected function setUp(): void
     {
         $this->output = new BufferedOutput();
+    }
+
+    protected function tearDown(): void
+    {
+        putenv('MAGE_OBSIDIAN_STRICT_DEPLOY');
     }
 
     public function testSaysNothingAboutACompleteDeploy(): void
@@ -141,6 +147,63 @@ class VerifyViteContentPluginTest extends TestCase
         $this->pluginWith($verifier)->afterDeploy($this->subject(), null, $options);
     }
 
+    public function testWarnsAboutAThemeThatWasNeverBuilt(): void
+    {
+        $plugin = $this->pluginWithUnbuilt(unbuilt: ['MageObsidian/default'], outdated: []);
+
+        $plugin->afterDeploy($this->subject(), null, $this->options());
+
+        $this->assertStringContainsString('MageObsidian/default', $this->output->fetch());
+    }
+
+    public function testStrictModeFailsTheDeployForAThemeThatWasNeverBuilt(): void
+    {
+        putenv('MAGE_OBSIDIAN_STRICT_DEPLOY=1');
+        $plugin = $this->pluginWithUnbuilt(unbuilt: ['MageObsidian/default'], outdated: []);
+
+        $this->expectException(LocalizedException::class);
+
+        $plugin->afterDeploy($this->subject(), null, $this->options());
+    }
+
+    public function testStrictModeFailsTheDeployWhenFilesCouldNotBePublished(): void
+    {
+        putenv('MAGE_OBSIDIAN_STRICT_DEPLOY=1');
+        $target = $this->target(['lib/vue.js']);
+        $plugin = $this->pluginWithUnbuilt(
+            unbuilt: [],
+            outdated: [$target->label() => $target],
+            failed: ['lib/vue.js']
+        );
+
+        $this->expectException(LocalizedException::class);
+
+        $plugin->afterDeploy($this->subject(), null, $this->options());
+    }
+
+    public function testWithoutStrictModeUnpublishedFilesOnlyWarn(): void
+    {
+        $target = $this->target(['lib/vue.js']);
+        $plugin = $this->pluginWithUnbuilt(
+            unbuilt: [],
+            outdated: [$target->label() => $target],
+            failed: ['lib/vue.js']
+        );
+
+        $plugin->afterDeploy($this->subject(), null, $this->options());
+
+        $this->assertStringContainsString('did not publish the whole Vite build', $this->output->fetch());
+    }
+
+    private function pluginWithUnbuilt(array $unbuilt, array $outdated, array $failed = []): VerifyViteContentPlugin
+    {
+        $verifier = $this->createStub(ViteOutputVerifier::class);
+        $verifier->method('findUnbuilt')->willReturn($unbuilt);
+        $verifier->method('findOutdated')->willReturn($outdated);
+
+        return $this->pluginWith($verifier, $this->failingPublisher($failed));
+    }
+
     /**
      * @param string[] $files
      */
@@ -160,7 +223,7 @@ class VerifyViteContentPluginTest extends TestCase
      */
     private function verifier(array $outdated): ViteOutputVerifier
     {
-        $verifier = $this->createMock(ViteOutputVerifier::class);
+        $verifier = $this->createStub(ViteOutputVerifier::class);
         $verifier->method('findOutdated')->willReturn($outdated);
 
         return $verifier;
@@ -171,7 +234,7 @@ class VerifyViteContentPluginTest extends TestCase
      */
     private function failingPublisher(array $failing): ViteOutputPublisher
     {
-        $publisher = $this->createMock(ViteOutputPublisher::class);
+        $publisher = $this->createStub(ViteOutputPublisher::class);
         $publisher->method('publish')->willReturn($failing);
 
         return $publisher;
@@ -191,14 +254,14 @@ class VerifyViteContentPluginTest extends TestCase
     ): VerifyViteContentPlugin {
         return new VerifyViteContentPlugin(
             $verifier,
-            $publisher ?? $this->createMock(ViteOutputPublisher::class),
+            $publisher ?? $this->createStub(ViteOutputPublisher::class),
             $this->output
         );
     }
 
     private function subject(): DeployStaticContent
     {
-        return $this->createMock(DeployStaticContent::class);
+        return $this->createStub(DeployStaticContent::class);
     }
 
     /**

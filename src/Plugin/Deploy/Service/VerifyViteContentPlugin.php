@@ -11,6 +11,8 @@ namespace MageObsidian\ModernFrontend\Plugin\Deploy\Service;
 
 use Magento\Deploy\Console\DeployStaticOptions;
 use Magento\Deploy\Service\DeployStaticContent;
+use Magento\Framework\Exception\LocalizedException;
+use Magento\Framework\Phrase;
 use MageObsidian\ModernFrontend\Model\Deploy\ViteOutputPublisher;
 use MageObsidian\ModernFrontend\Model\Deploy\ViteOutputTarget;
 use MageObsidian\ModernFrontend\Model\Deploy\ViteOutputVerifier;
@@ -40,6 +42,8 @@ class VerifyViteContentPlugin
      */
     private const SAMPLE_SIZE = 5;
 
+    public const string STRICT_ENV_VAR = 'MAGE_OBSIDIAN_STRICT_DEPLOY';
+
     public function __construct(
         private readonly ViteOutputVerifier $verifier,
         private readonly ViteOutputPublisher $publisher,
@@ -62,6 +66,15 @@ class VerifyViteContentPlugin
             || $this->hasFrontendArea($options[DeployStaticOptions::EXCLUDE_AREA] ?? [])
         ) {
             return $result;
+        }
+
+        $unbuilt = $this->verifier->findUnbuilt($options);
+        if ($unbuilt !== []) {
+            $this->report(__(
+                'Mage Obsidian found no Vite build for %1. Its storefront will load without its assets. '
+                . 'Run the Vite build before setup:static-content:deploy.',
+                implode(', ', $unbuilt)
+            )->render());
         }
 
         $outdated = $this->verifier->findOutdated($options);
@@ -93,7 +106,7 @@ class VerifyViteContentPlugin
         }
 
         if ($failures !== []) {
-            $this->warn(__(
+            $this->report(__(
                 'Static content deployment did not publish the whole Vite build, and the missing files '
                 . 'could not be copied either. %1. This usually means a deploy worker died: the command '
                 . 'still exits 0, so re-run setup:static-content:deploy and check for killed processes.',
@@ -102,6 +115,14 @@ class VerifyViteContentPlugin
         }
 
         return $result;
+    }
+
+    private function report(string $message): void
+    {
+        if (getenv(self::STRICT_ENV_VAR) === '1') {
+            throw new LocalizedException(new Phrase('%1', [$message]));
+        }
+        $this->warn($message);
     }
 
     /**

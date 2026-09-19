@@ -102,6 +102,26 @@ class ViteOutputVerifier
         return $outdated;
     }
 
+    public function findUnbuilt(array $options): array
+    {
+        if ($this->targets->locales($options) === []) {
+            return [];
+        }
+
+        $unbuilt = [];
+        foreach ($this->configManager->get()['themes'] ?? [] as $theme => $definition) {
+            if (!$this->targets->includesTheme((string)$theme, $options)) {
+                continue;
+            }
+            $source = $definition['src'] . '/' . self::WEB_PATH . '/' . ConfigInterface::GENERATED_PATH;
+            if (!$this->driver->isDirectory($source) || $this->relativePaths($source) === []) {
+                $unbuilt[] = (string)$theme;
+            }
+        }
+
+        return $unbuilt;
+    }
+
     /**
      * A published file is outdated when it is absent, when it is a different
      * size, or when the build wrote its source after it was published. Content
