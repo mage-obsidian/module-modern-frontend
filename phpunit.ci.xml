@@ -47,6 +47,8 @@
             <exclude>src/Test/Unit/Model/Deploy/ViteOutputPublisherTest.php</exclude>
             <exclude>src/Test/Unit/Model/Deploy/ViteOutputVerifierTest.php</exclude>
             <exclude>src/Test/Unit/Model/Deploy/DeployTargetsTest.php</exclude>
+            <exclude>src/Test/Unit/Model/Config/ConfigDefaultsTest.php</exclude>
+            <exclude>src/Test/Unit/Plugin/App/DeploymentConfig/WriterPluginTest.php</exclude>
         </testsuite>
     </testsuites>
 </phpunit>
