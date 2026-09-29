@@ -30,6 +30,7 @@ use Throwable;
 class CriticalCssProvider
 {
     private const CRITICAL_DIR = 'critical';
+    private const string FONT_URL = '#url\(\s*([\'"]?)\.\./([A-Za-z0-9._-]+\.woff2)\1\s*\)#';
 
     /** @var array<string, string> */
     private array $cache = [];
@@ -95,6 +96,27 @@ class CriticalCssProvider
             return null;
         }
 
-        return $this->fileDriver->isExists($source) ? (string)$this->fileDriver->fileGetContents($source) : null;
+        return $this->fileDriver->isExists($source)
+            ? $this->withServedFontUrls((string)$this->fileDriver->fileGetContents($source))
+            : null;
+    }
+
+    private function withServedFontUrls(string $css): string
+    {
+        return (string)preg_replace_callback(
+            self::FONT_URL,
+            fn (array $match): string => 'url(' . $this->fontUrl($match[2]) . ')',
+            $css
+        );
+    }
+
+    private function fontUrl(string $name): string
+    {
+        $url = (string)preg_replace('/\s+/', '', $this->assetRepository->getUrlWithParams(
+            $this->configProvider->getViteGeneratedPath() . '/' . $name,
+            ['_secure' => true]
+        ));
+
+        return (string)preg_replace('#^https?://[^/]+#i', '', $url);
     }
 }

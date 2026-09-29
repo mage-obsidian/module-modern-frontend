@@ -118,6 +118,39 @@ class CriticalCssProviderTest extends TestCase
         $provider->getCriticalCss('cms_index_index');
     }
 
+    public function testPointsRelativeFontUrlsAtTheStaticPathOfTheServingStore(): void
+    {
+        $assetRepository = $this->assetRepositoryReturning('/t/web/critical/cms_index_index.css');
+        $assetRepository->expects($this->once())
+            ->method('getUrlWithParams')
+            ->with('generated/font-a.woff2', ['_secure' => true])
+            ->willReturn('https://shop.test/static/version7/frontend/Acme/shop/es_ES/generated/font-a.woff2');
+        $fileDriver = $this->createMock(File::class);
+        $fileDriver->method('isExists')->willReturn(true);
+        $fileDriver->method('fileGetContents')->willReturn("@font-face{src:url('../font-a.woff2')}");
+
+        $provider = $this->buildProvider($assetRepository, $this->configProvider(false), $fileDriver);
+
+        $this->assertSame(
+            '@font-face{src:url(/static/version7/frontend/Acme/shop/es_ES/generated/font-a.woff2)}',
+            $provider->getCriticalCss('cms_index_index')
+        );
+    }
+
+    public function testLeavesFontUrlsAnOlderReleaseAlreadyResolvedAlone(): void
+    {
+        $css = '@font-face{src:url(/static/version1/frontend/Acme/shop/en_US/generated/font-a.woff2)}';
+        $assetRepository = $this->assetRepositoryReturning('/t/web/generated/critical/cms_index_index.css');
+        $assetRepository->expects($this->never())->method('getUrlWithParams');
+        $fileDriver = $this->createMock(File::class);
+        $fileDriver->method('isExists')->willReturn(true);
+        $fileDriver->method('fileGetContents')->willReturn($css);
+
+        $provider = $this->buildProvider($assetRepository, $this->configProvider(false), $fileDriver);
+
+        $this->assertSame($css, $provider->getCriticalCss('cms_index_index'));
+    }
+
     private function assetRepositoryReturning(string $sourceFile): Repository
     {
         $asset = $this->createMock(AssetFile::class);
