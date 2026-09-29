@@ -42,7 +42,7 @@ class ConfigManagerTest extends TestCase
     {
         $config = $this->configManager->generate();
 
-        $this->assertSame('1.0.0', $config['schema_version']);
+        $this->assertSame('1.1.0', $config['schema_version']);
         $this->assertIsArray($config['modules']);
         $this->assertArrayHasKey(
             'MageObsidian_ModernFrontend',

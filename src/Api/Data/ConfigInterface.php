@@ -17,7 +17,7 @@ interface ConfigInterface
      * version it understands and refuses a mismatching contract, so PHP and JS
      * stay in lockstep. See js-package-utils contractValidator.js.
      */
-    public const string SCHEMA_VERSION = '1.0.0';
+    public const string SCHEMA_VERSION = '1.1.0';
     public const string VUE_COMPONENTS_PATH = 'components';
     public const string JS_PATH = 'js';
     public const array FOLDERS_TO_WATCH = [

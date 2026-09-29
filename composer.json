@@ -51,6 +51,6 @@
         }
     },
     "conflict": {
-        "mage-obsidian/component-modern-frontend": "<2.4.5"
+        "mage-obsidian/component-modern-frontend": "<2.7.0"
     }
 }

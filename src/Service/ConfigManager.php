@@ -14,6 +14,7 @@ use MageObsidian\ModernFrontend\Api\Data\ConfigInterface;
 use MageObsidian\ModernFrontend\Api\ModuleListInterface;
 use MageObsidian\ModernFrontend\Api\ThemeListInterface;
 use MageObsidian\ModernFrontend\Service\Contract\ContractDiff;
+use MageObsidian\ModernFrontend\Service\Contract\ContractPaths;
 use Magento\Framework\App\DeploymentConfig\Writer\FormatterInterface;
 use Magento\Framework\App\State;
 use Magento\Framework\Exception\FileSystemException;
@@ -101,7 +102,6 @@ class ConfigManager implements ConfigManagerInterface
             'modules' => $configModules,
             'themes' => $configThemes
         ];
-        $phpContents = $this->formatter->format($baseConfig);
 
         $jsonConfig = [
             ...$baseConfig,
@@ -118,12 +118,15 @@ class ConfigManager implements ConfigManagerInterface
             'LIB_PATH' => ConfigInterface::LIB_PATH
         ];
 
+        $root = $this->directoryList->getPath(DirectoryList::ROOT);
+        $phpContents = $this->formatter->format(ContractPaths::relativize($baseConfig, $root));
+
         // An empty section is array_map([]) === [], which json_encode serializes
         // as a JSON array, not an object — failing the schema and the JS object
         // access. Coerce to objects for the on-disk JSON only; the in-memory and
         // .php copies stay arrays so PHP offset access (isModuleEnabled, etc.)
         // keeps working. This is a real, reachable case (e.g. no compatible theme).
-        $jsonForFile = $jsonConfig;
+        $jsonForFile = ContractPaths::relativize($jsonConfig, $root);
         if ($jsonForFile['modules'] === []) {
             $jsonForFile['modules'] = new \stdClass();
         }
@@ -291,7 +294,10 @@ class ConfigManager implements ConfigManagerInterface
         } elseif ($missingFile) {
             return $this->generate();
         }
-        $this->configData = require_once $this->getConfigFilePath()['php'];
+        $this->configData = ContractPaths::absolutize(
+            require $this->getConfigFilePath()['php'],
+            $this->directoryList->getPath(DirectoryList::ROOT)
+        );
         return $this->configData;
     }
 
