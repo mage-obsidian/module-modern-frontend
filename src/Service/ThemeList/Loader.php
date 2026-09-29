@@ -8,41 +8,28 @@
 
 namespace MageObsidian\ModernFrontend\Service\ThemeList;
 
+use DOMDocument;
 use Generator;
-use Magento\Framework\App\Filesystem\DirectoryList;
-use Magento\Framework\Component\ComponentRegistrar;
+use Magento\Framework\App\Area;
 use Magento\Framework\Component\ComponentRegistrarInterface;
+use Magento\Framework\Config\Dom;
+use Magento\Framework\Config\Dom\ValidationException;
+use Magento\Framework\Config\ThemeFactory;
+use Magento\Framework\Config\ValidationStateInterface;
 use Magento\Framework\Exception\FileSystemException;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Filesystem\DriverInterface;
 use Magento\Framework\Module\ModuleList;
+use Magento\Framework\View\Design\Theme\ThemePackageList;
 use Magento\Framework\Xml\Parser;
-use Magento\Framework\Config\Dom;
-use Magento\Framework\Config\Dom\ValidationException;
-use Magento\Framework\Config\ValidationStateInterface;
 use Magento\Framework\Xml\ParserFactory;
-use Magento\Theme\Model\ResourceModel\Theme\Collection;
-use Magento\Theme\Model\ResourceModel\Theme\CollectionFactory;
-use Magento\Theme\Model\Theme;
 use Psr\Log\LoggerInterface;
 
 class Loader extends \MageObsidian\ModernFrontend\Service\ModuleList\Loader
 {
     public const string XML_SCHEMA_PATH = '/etc/xsd/mage_obsidian_theme_compatibility.xsd';
+    private const string THEME_XML = '/theme.xml';
 
-    /**
-     * Loader constructor.
-     *
-     * @param ComponentRegistrarInterface $moduleRegistry
-     * @param ModuleList $moduleList
-     * @param DriverInterface $filesystemDriver
-     * @param Parser $parser
-     * @param ValidationStateInterface $validationState
-     * @param ParserFactory $parserFactory
-     * @param LoggerInterface $logger
-     * @param CollectionFactory $themeCollection
-     * @param DirectoryList $directoryList
-     */
     public function __construct(
         ComponentRegistrarInterface $moduleRegistry,
         ModuleList $moduleList,
@@ -51,8 +38,8 @@ class Loader extends \MageObsidian\ModernFrontend\Service\ModuleList\Loader
         ValidationStateInterface $validationState,
         ParserFactory $parserFactory,
         LoggerInterface $logger,
-        protected readonly CollectionFactory $themeCollection,
-        protected readonly DirectoryList $directoryList,
+        protected readonly ThemePackageList $themePackageList,
+        protected readonly ThemeFactory $themeConfigFactory,
     ) {
         parent::__construct($moduleRegistry, $moduleList, $filesystemDriver, $parser, $validationState, $parserFactory, $logger);
     }
@@ -67,8 +54,6 @@ class Loader extends \MageObsidian\ModernFrontend\Service\ModuleList\Loader
 
         $schemaPath = $this->getSchemaPath();
         foreach ($this->getThemeConfigs() as list($themeCode, $parentThemeCode, $filePath, $contents)) {
-            // Mirror the module loader: a malformed/invalid theme descriptor is
-            // logged and skipped rather than aborting the whole contract.
             try {
                 new Dom($contents, $this->validationState, schemaFile: $schemaPath);
                 $data = $this->parser->loadXML($contents)
@@ -94,52 +79,56 @@ class Loader extends \MageObsidian\ModernFrontend\Service\ModuleList\Loader
         return $result;
     }
 
-    /**
-     * Returns a collection of themes.
-     *
-     * @return Collection
-     */
-    private function getThemeCollection(): Collection
-    {
-        $collection = $this->themeCollection->create();
-        $collection->addFieldToSelect([
-            'code',
-            'theme_path'
-        ])
-                   ->filterPhysicalThemes()
-                   ->getSelect()
-                   ->joinLeft(
-                       $collection->getTable('theme'),
-                       'main_table.parent_id = theme.theme_id',
-                       ['parent_code' => 'code']
-                   );
-        return $collection;
-    }
-
-    /**
-     * Returns theme config data and a path to the mage-obsidian_compatibility.xml file.
-     *
-     * @return Generator
-     * @throws FileSystemException
-     */
     private function getThemeConfigs(): Generator
     {
-        /**
-         * @var Theme[] $themes
-         */
-        $themes = $this->getThemeCollection();
-        foreach ($themes as $theme) {
-            $rootPath = $this->moduleRegistry->getPath(ComponentRegistrar::THEME, "frontend/{$theme->getCode()}");
+        foreach ($this->themePackageList->getThemes() as $package) {
+            if ($package->getArea() !== Area::AREA_FRONTEND) {
+                continue;
+            }
+            $rootPath = $package->getPath();
             $filePath = $rootPath . self::XML_FILE_PATH;
             if (!$this->filesystemDriver->isExists($filePath)) {
                 continue;
             }
+            $themeCode = $package->getVendor() . '/' . $package->getName();
             yield [
-                $theme->getCode(),
-                $theme->getParentCode(),
+                $themeCode,
+                $this->parentOf($themeCode, $rootPath),
                 $rootPath,
-                $this->filesystemDriver->fileGetContents($filePath)
+                $this->filesystemDriver->fileGetContents($filePath),
             ];
         }
+    }
+
+    private function parentOf(string $themeCode, string $rootPath): ?string
+    {
+        $themeXml = $rootPath . self::THEME_XML;
+        $contents = $this->filesystemDriver->isExists($themeXml)
+            ? (string)$this->filesystemDriver->fileGetContents($themeXml)
+            : '';
+        if (!self::isThemeDocument($contents)) {
+            throw new LocalizedException(__(
+                'MageObsidian: the theme "%1" has no readable theme.xml at %2.',
+                $themeCode,
+                $themeXml
+            ));
+        }
+        $parent = $this->themeConfigFactory->create(['configContent' => $contents])->getParentTheme();
+
+        return $parent === null ? null : implode('/', $parent);
+    }
+
+    private static function isThemeDocument(string $contents): bool
+    {
+        if (trim($contents) === '') {
+            return false;
+        }
+        $previous = libxml_use_internal_errors(true);
+        $document = new DOMDocument();
+        $loaded = $document->loadXML($contents);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+
+        return $loaded && $document->getElementsByTagName('theme')->length > 0;
     }
 }
