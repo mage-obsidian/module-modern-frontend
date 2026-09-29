@@ -76,6 +76,15 @@ class DeployTargets
     }
 
     /**
+     * @param array<string, mixed> $options
+     */
+    public function coversAllThemes(array $options): bool
+    {
+        return $this->includesEverything($this->option($options, DeployStaticOptions::THEME))
+            && $this->excludesNothing($this->option($options, DeployStaticOptions::EXCLUDE_THEME));
+    }
+
+    /**
      * Asking the deploy's own resolver keeps this from drifting: it already
      * knows to fall back to the distro locale when no database is reachable,
      * which is how static content gets deployed in a build pipeline.
