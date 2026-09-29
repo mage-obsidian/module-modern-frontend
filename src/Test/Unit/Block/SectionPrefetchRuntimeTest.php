@@ -9,8 +9,12 @@ declare(strict_types=1);
 
 namespace MageObsidian\ModernFrontend\Test\Unit\Block;
 
+use Magento\Framework\Module\Dir\Reader;
+use Magento\Framework\UrlInterface;
 use Magento\Framework\View\Element\Context;
+use Magento\Framework\View\Helper\SecureHtmlRenderer;
 use MageObsidian\ModernFrontend\Block\SectionPrefetchRuntime;
+use MageObsidian\ModernFrontend\Service\RuntimeScriptReader;
 use PHPUnit\Framework\TestCase;
 
 class SectionPrefetchRuntimeTest extends TestCase
@@ -41,6 +45,21 @@ class SectionPrefetchRuntimeTest extends TestCase
         $this->assertSame('', $this->render($this->buildBlock([])));
     }
 
+    public function testTheInlinedScriptCarriesNoLicenseHeader(): void
+    {
+        $renderer = $this->createMock(SecureHtmlRenderer::class);
+        $renderer->expects($this->once())
+            ->method('renderTag')
+            ->with('script', [], $this->callback(
+                static fn(string $content): bool => str_contains($content, '__MAGE_OBSIDIAN_SECTION_PREFETCH_CONFIG__')
+                    && !str_contains($content, 'SPDX')
+                    && !str_contains($content, 'This file is part of')
+            ), false)
+            ->willReturn('<script>…</script>');
+
+        $this->assertSame('<script>…</script>', $this->render($this->buildBlock(['cart'], $renderer)));
+    }
+
     private function render(SectionPrefetchRuntime $block): string
     {
         $method = new \ReflectionMethod($block, '_toHtml');
@@ -48,12 +67,20 @@ class SectionPrefetchRuntimeTest extends TestCase
         return (string)$method->invoke($block);
     }
 
-    private function buildBlock(mixed $sections): SectionPrefetchRuntime
+    private function buildBlock(mixed $sections, ?SecureHtmlRenderer $renderer = null): SectionPrefetchRuntime
     {
+        $moduleReader = $this->createStub(Reader::class);
+        $moduleReader->method('getModuleDir')->willReturn(__DIR__ . '/../../../view');
+
+        $urlBuilder = $this->createStub(UrlInterface::class);
+        $urlBuilder->method('getUrl')->willReturn('https://example.test/customer/section/load/');
+        $context = $this->createStub(Context::class);
+        $context->method('getUrlBuilder')->willReturn($urlBuilder);
+
         return new SectionPrefetchRuntime(
-            $this->createMock(Context::class),
-            $this->createMock(\Magento\Framework\View\Helper\SecureHtmlRenderer::class),
-            $this->createMock(\Magento\Framework\Module\Dir\Reader::class),
+            $context,
+            $renderer ?? $this->createStub(SecureHtmlRenderer::class),
+            new RuntimeScriptReader($moduleReader),
             ['sections' => $sections]
         );
     }

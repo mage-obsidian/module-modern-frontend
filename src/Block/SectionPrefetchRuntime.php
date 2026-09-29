@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace MageObsidian\ModernFrontend\Block;
 
-use Magento\Framework\Module\Dir\Reader;
 use Magento\Framework\View\Element\AbstractBlock;
 use Magento\Framework\View\Element\Context;
 use Magento\Framework\View\Helper\SecureHtmlRenderer;
+use MageObsidian\ModernFrontend\Service\RuntimeScriptReader;
 
 class SectionPrefetchRuntime extends AbstractBlock
 {
@@ -25,7 +25,7 @@ class SectionPrefetchRuntime extends AbstractBlock
     public function __construct(
         Context $context,
         private readonly SecureHtmlRenderer $secureRenderer,
-        private readonly Reader $moduleReader,
+        private readonly RuntimeScriptReader $scriptReader,
         array $data = []
     ) {
         parent::__construct($context, $data);
@@ -54,7 +54,7 @@ class SectionPrefetchRuntime extends AbstractBlock
             return '';
         }
 
-        $script = $this->readScript();
+        $script = $this->scriptReader->read(self::MODULE_NAME, self::SCRIPT_PATH);
         if ($script === '') {
             return '';
         }
@@ -86,15 +86,5 @@ class SectionPrefetchRuntime extends AbstractBlock
                 ],
             ]
         );
-    }
-
-    private function readScript(): string
-    {
-        $path = $this->moduleReader->getModuleDir('view', self::MODULE_NAME) . self::SCRIPT_PATH;
-        if (!is_file($path) || !is_readable($path)) {
-            return '';
-        }
-
-        return (string)file_get_contents($path);
     }
 }
