@@ -162,25 +162,6 @@ class DeployTargetsTest extends TestCase
         ]));
     }
 
-    public function testCoversAllThemesOnlyWithoutIncludeListOrExclusions(): void
-    {
-        $targets = $this->targets([]);
-
-        $this->assertTrue($targets->coversAllThemes([
-            DeployStaticOptions::THEME => ['all'],
-            DeployStaticOptions::EXCLUDE_THEME => ['none'],
-        ]));
-        $this->assertTrue($targets->coversAllThemes([]));
-        $this->assertFalse($targets->coversAllThemes([
-            DeployStaticOptions::THEME => ['all'],
-            DeployStaticOptions::EXCLUDE_THEME => ['Acme/admin'],
-        ]));
-        $this->assertFalse($targets->coversAllThemes([
-            DeployStaticOptions::THEME => ['Acme/shop'],
-            DeployStaticOptions::EXCLUDE_THEME => ['none'],
-        ]));
-    }
-
     /**
      * @param string[] $usedLocales
      */

@@ -79,7 +79,7 @@ class DeployViteContentPlugin
         );
 
         $this->output->writeln('<info>Starting Mage Obsidian Vite build generation...</info>');
-        if ($this->deployTargets->coversAllThemes($options)) {
+        if (count($themes) === count($contractThemes)) {
             $this->runner->build();
         } else {
             foreach ($themes as $theme) {

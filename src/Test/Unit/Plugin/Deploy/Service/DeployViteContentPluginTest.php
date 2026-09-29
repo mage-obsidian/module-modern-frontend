@@ -87,6 +87,13 @@ class DeployViteContentPluginTest extends TestCase
         $this->deploy([DeployStaticOptions::EXCLUDE_THEME => ['Acme/shop']]);
     }
 
+    public function testExcludingAThemeOutsideTheContractKeepsASingleBuildOfEveryTheme(): void
+    {
+        $this->runner->expects($this->once())->method('build')->with(null);
+
+        $this->deploy([DeployStaticOptions::EXCLUDE_THEME => ['Magento/luma']]);
+    }
+
     public function testExcludeNoneIsASingleBuildOfEveryTheme(): void
     {
         $this->runner->expects($this->once())->method('build')->with(null);
