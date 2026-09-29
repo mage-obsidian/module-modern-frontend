@@ -1,3 +1,9 @@
+<!--
+ This file is part of the MageObsidian - ModernFrontend project.
+
+ SPDX-FileCopyrightText: 2024 Jeanmarcos Juarez
+ SPDX-License-Identifier: MIT
+-->
 <script setup lang="ts">
 import { computed } from "vue";
 

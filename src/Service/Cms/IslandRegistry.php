@@ -1,11 +1,11 @@
 <?php
-declare(strict_types=1);
 /**
- * This file is part of the Obsidian - ModernFrontend project.
+ * This file is part of the MageObsidian - ModernFrontend project.
  *
- * @license MIT License - See the LICENSE file in the root directory for details.
- * © 2024 Jeanmarcos Juarez
+ * SPDX-FileCopyrightText: 2024 Jeanmarcos Juarez
+ * SPDX-License-Identifier: MIT
  */
+declare(strict_types=1);
 
 namespace MageObsidian\ModernFrontend\Service\Cms;
 

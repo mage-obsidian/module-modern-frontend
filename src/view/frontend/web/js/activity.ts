@@ -1,3 +1,7 @@
+// This file is part of the MageObsidian - ModernFrontend project.
+//
+// SPDX-FileCopyrightText: 2024 Jeanmarcos Juarez
+// SPDX-License-Identifier: MIT
 import { ref, computed, type ComputedRef } from 'vue';
 import { createActivityTracker, matchActivity } from 'mage-obsidian/runtime/activity.ts';
 import events from 'MageObsidian_ModernFrontend::js/events';

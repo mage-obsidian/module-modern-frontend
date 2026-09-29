@@ -1,4 +1,10 @@
 <?php
+/**
+ * This file is part of the MageObsidian - ModernFrontend project.
+ *
+ * SPDX-FileCopyrightText: 2024 Jeanmarcos Juarez
+ * SPDX-License-Identifier: MIT
+ */
 declare(strict_types=1);
 
 namespace MageObsidian\ModernFrontend\Test\Unit\Model\SchemaOrg\Builder;

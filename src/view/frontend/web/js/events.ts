@@ -1,3 +1,7 @@
+// This file is part of the MageObsidian - ModernFrontend project.
+//
+// SPDX-FileCopyrightText: 2024 Jeanmarcos Juarez
+// SPDX-License-Identifier: MIT
 import { EventManager } from 'mage-obsidian/runtime/eventManager.ts';
 import 'mage-obsidian/runtime/lifecycleEvents.ts';
 
