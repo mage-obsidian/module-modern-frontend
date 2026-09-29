@@ -5,8 +5,11 @@ namespace MageObsidian\ModernFrontend\Plugin\Deploy\Service;
 
 use Magento\Deploy\Console\DeployStaticOptions;
 use Magento\Deploy\Service\DeployStaticContent;
+use Magento\Framework\App\Filesystem\DirectoryList;
 use Magento\Framework\Exception\LocalizedException;
 use MageObsidian\ModernFrontend\Api\ConfigManagerInterface;
+use MageObsidian\ModernFrontend\Model\Deploy\DeployTargets;
+use MageObsidian\ModernFrontend\Model\Deploy\ViteBuildPreflight;
 use MageObsidian\ModernFrontend\Model\Deploy\ViteBuildRunner;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -22,18 +25,20 @@ use Symfony\Component\Console\Output\OutputInterface;
 class DeployViteContentPlugin
 {
     public const AVAILABLE_AREAS = ['frontend', 'all'];
+    public const string SKIP_BUILD_ENV_VAR = 'MAGE_OBSIDIAN_SKIP_VITE_BUILD';
+    private const string OUTPUT_DIR = '/web/generated';
 
     public function __construct(
         private readonly ConfigManagerInterface $configManager,
+        private readonly DeployTargets $deployTargets,
         private readonly ViteBuildRunner $runner,
+        private readonly ViteBuildPreflight $preflight,
+        private readonly DirectoryList $directoryList,
         private readonly OutputInterface $output
     ) {
     }
 
     /**
-     * @param DeployStaticContent $subject
-     * @param array $options
-     * @return array
      * @throws LocalizedException
      * @SuppressWarnings(PHPMD.UnusedFormalParameter)
      */
@@ -47,27 +52,52 @@ class DeployViteContentPlugin
             return [$options];
         }
 
-        $themes = $options[DeployStaticOptions::THEME] ?? [];
-        $this->output->writeln('<info>Starting Mage Obsidian Vite build generation...</info>');
+        $contractThemes = $this->configManager->generate()['themes'] ?? [];
 
-        if (in_array('all', $themes, true)) {
+        if (self::isBuildSkipped(getenv(self::SKIP_BUILD_ENV_VAR))) {
+            $this->output->writeln(sprintf(
+                '<comment>%s is set: the Vite build is skipped. The frontend contract was regenerated.</comment>',
+                self::SKIP_BUILD_ENV_VAR
+            ));
+            return [$options];
+        }
+
+        $themes = array_values(array_filter(
+            array_keys($contractThemes),
+            fn (string $theme): bool => $this->deployTargets->includesTheme($theme, $options)
+        ));
+        if ($themes === []) {
+            $this->output->writeln(
+                '<comment>No MageObsidian theme is included in this deploy: nothing to build.</comment>'
+            );
+            return [$options];
+        }
+
+        $this->preflight->assertWritable(
+            $this->directoryList->getRoot() . '/' . ViteBuildRunner::VITE_DIR,
+            array_map(fn (string $theme): string => $contractThemes[$theme]['src'] . self::OUTPUT_DIR, $themes)
+        );
+
+        $this->output->writeln('<info>Starting Mage Obsidian Vite build generation...</info>');
+        if ($this->deployTargets->coversAllThemes($options)) {
             $this->runner->build();
         } else {
             foreach ($themes as $theme) {
-                if (!$this->configManager->isThemeEnabled($theme)) {
-                    continue;
-                }
                 $this->runner->build($theme);
             }
         }
-
         $this->output->writeln('<info>Mage Obsidian Vite build generation finished.</info>');
+
         return [$options];
+    }
+
+    public static function isBuildSkipped(string|false $raw): bool
+    {
+        return $raw !== false && filter_var($raw, FILTER_VALIDATE_BOOLEAN);
     }
 
     /**
      * @param string[] $areas
-     * @return bool
      */
     private function hasFrontendArea(array $areas): bool
     {

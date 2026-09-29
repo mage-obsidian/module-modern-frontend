@@ -51,6 +51,7 @@
             <exclude>src/Test/Unit/Plugin/App/DeploymentConfig/WriterPluginTest.php</exclude>
             <exclude>src/Test/Unit/Service/ThemeList/LoaderTest.php</exclude>
             <exclude>src/Test/Unit/Model/Deploy/ViteBuildPreflightTest.php</exclude>
+            <exclude>src/Test/Unit/Plugin/Deploy/Service/DeployViteContentPluginTest.php</exclude>
         </testsuite>
     </testsuites>
 </phpunit>
