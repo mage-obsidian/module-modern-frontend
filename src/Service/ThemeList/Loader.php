@@ -54,6 +54,8 @@ class Loader extends \MageObsidian\ModernFrontend\Service\ModuleList\Loader
 
         $schemaPath = $this->getSchemaPath();
         foreach ($this->getThemeConfigs() as list($themeCode, $parentThemeCode, $filePath, $contents)) {
+            // Mirror the module loader: a malformed/invalid theme descriptor is
+            // logged and skipped rather than aborting the whole contract.
             try {
                 new Dom($contents, $this->validationState, schemaFile: $schemaPath);
                 $data = $this->parser->loadXML($contents)
@@ -79,6 +81,12 @@ class Loader extends \MageObsidian\ModernFrontend\Service\ModuleList\Loader
         return $result;
     }
 
+    /**
+     * Returns theme config data and a path to the mage-obsidian_compatibility.xml file.
+     *
+     * @return Generator
+     * @throws FileSystemException
+     */
     private function getThemeConfigs(): Generator
     {
         foreach ($this->themePackageList->getThemes() as $package) {
