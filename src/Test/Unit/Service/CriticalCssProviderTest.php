@@ -150,4 +150,72 @@ class CriticalCssProviderTest extends TestCase
             $logger ?? $this->createMock(LoggerInterface::class)
         );
     }
+
+    public function testPrefersTheThemeSourceCriticalOverTheOldGeneratedOne(): void
+    {
+        $fileDriver = $this->createMock(File::class);
+        $fileDriver->method('isExists')->willReturn(true);
+        $fileDriver->method('fileGetContents')->willReturnCallback(
+            fn (string $path): string => $path === '/t/web/critical/cms_index_index.css' ? '.new{}' : '.old{}'
+        );
+
+        $provider = $this->buildProvider(
+            $this->assetRepositoryMapping([
+                'critical/cms_index_index.css' => '/t/web/critical/cms_index_index.css',
+                'generated/critical/cms_index_index.css' => '/t/web/generated/critical/cms_index_index.css',
+            ]),
+            $this->configProvider(false),
+            $fileDriver
+        );
+
+        $this->assertSame('.new{}', $provider->getCriticalCss('cms_index_index'));
+    }
+
+    public function testFallsBackToTheOldGeneratedCritical(): void
+    {
+        $fileDriver = $this->createMock(File::class);
+        $fileDriver->method('isExists')->willReturn(true);
+        $fileDriver->method('fileGetContents')->willReturn('.old{}');
+
+        $provider = $this->buildProvider(
+            $this->assetRepositoryMapping([
+                'generated/critical/cms_index_index.css' => '/t/web/generated/critical/cms_index_index.css',
+            ]),
+            $this->configProvider(false),
+            $fileDriver
+        );
+
+        $this->assertSame('.old{}', $provider->getCriticalCss('cms_index_index'));
+    }
+
+    public function testReadsOnlyTheNewLocationWhenTheOldOneIsGone(): void
+    {
+        $fileDriver = $this->createMock(File::class);
+        $fileDriver->method('isExists')->willReturn(true);
+        $fileDriver->method('fileGetContents')->willReturn('.new{}');
+
+        $provider = $this->buildProvider(
+            $this->assetRepositoryMapping(['critical/cms_index_index.css' => '/t/web/critical/cms_index_index.css']),
+            $this->configProvider(false),
+            $fileDriver
+        );
+
+        $this->assertSame('.new{}', $provider->getCriticalCss('cms_index_index'));
+    }
+
+    private function assetRepositoryMapping(array $sources): Repository
+    {
+        $repository = $this->createMock(Repository::class);
+        $repository->method('createAsset')->willReturnCallback(function (string $fileId) use ($sources): AssetFile {
+            $asset = $this->createMock(AssetFile::class);
+            if (isset($sources[$fileId])) {
+                $asset->method('getSourceFile')->willReturn($sources[$fileId]);
+            } else {
+                $asset->method('getSourceFile')->willThrowException(new NotFoundException('missing ' . $fileId));
+            }
+            return $asset;
+        });
+
+        return $repository;
+    }
 }

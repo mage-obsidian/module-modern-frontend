@@ -17,9 +17,10 @@ use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
- * Reads the per-handle critical CSS that the build wrote to
- * `<generated>/critical/<handle>.css` (see the `mage-obsidian:frontend:critical-css`
- * command). The content — not a URL — is returned so the head can inline it.
+ * Reads the per-handle critical CSS from the theme's `critical/<handle>.css`,
+ * falling back to `<generated>/critical/<handle>.css` from older CLI releases
+ * (see the `mage-obsidian:frontend:critical-css` command). The content — not a
+ * URL — is returned so the head can inline it.
  *
  * Read from the theme source like the Vite manifest (works in any deploy mode),
  * cached per process, skipped under HMR, and degraded to an empty string on any
@@ -62,15 +63,13 @@ class CriticalCssProvider
         }
 
         try {
-            $fileId = $this->configProvider->getViteGeneratedPath()
-                . '/' . self::CRITICAL_DIR . '/' . $handle . '.css';
-            $source = $this->assetRepository->createAsset($fileId)->getSourceFile();
-            if (!$this->fileDriver->isExists($source)) {
-                return '';
+            foreach ($this->candidates($handle) as $fileId) {
+                $css = $this->read($fileId);
+                if ($css !== null) {
+                    return $css;
+                }
             }
 
-            return (string)$this->fileDriver->fileGetContents($source);
-        } catch (NotFoundException) {
             return '';
         } catch (Throwable $e) {
             $this->logger->warning(
@@ -79,5 +78,23 @@ class CriticalCssProvider
 
             return '';
         }
+    }
+
+    private function candidates(string $handle): array
+    {
+        $file = self::CRITICAL_DIR . '/' . $handle . '.css';
+
+        return [$file, $this->configProvider->getViteGeneratedPath() . '/' . $file];
+    }
+
+    private function read(string $fileId): ?string
+    {
+        try {
+            $source = $this->assetRepository->createAsset($fileId)->getSourceFile();
+        } catch (NotFoundException) {
+            return null;
+        }
+
+        return $this->fileDriver->isExists($source) ? (string)$this->fileDriver->fileGetContents($source) : null;
     }
 }
