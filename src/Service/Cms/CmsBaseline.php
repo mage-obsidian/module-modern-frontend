@@ -34,6 +34,10 @@ use Throwable;
  */
 class CmsBaseline
 {
+    public const string ABSENT = 'absent';
+    public const string EMPTY = 'empty';
+    public const string PRESENT = 'present';
+
     /** @var array<string, array{classes: string[], present: bool}> */
     private array $cache = [];
 
@@ -60,6 +64,16 @@ class CmsBaseline
     public function exists(?ThemeInterface $theme = null): bool
     {
         return $this->load($theme)['present'];
+    }
+
+    public function status(?ThemeInterface $theme = null): string
+    {
+        $loaded = $this->load($theme);
+        if (!$loaded['present']) {
+            return self::ABSENT;
+        }
+
+        return $loaded['classes'] === [] ? self::EMPTY : self::PRESENT;
     }
 
     /**

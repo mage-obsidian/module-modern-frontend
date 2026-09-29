@@ -155,6 +155,16 @@ class DeltaStylesheet
         return true;
     }
 
+    public function baselineStatuses(): array
+    {
+        $statuses = [];
+        foreach ($this->configuredThemes() as $theme) {
+            $statuses[(string)$theme->getCode()] = $this->baseline->status($theme);
+        }
+
+        return $statuses;
+    }
+
     /**
      * Media-relative path of a theme's delta, e.g.
      * `mage-obsidian/cms/MageObsidian_default/on-the-fly.css`.

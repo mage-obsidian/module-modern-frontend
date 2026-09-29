@@ -205,7 +205,7 @@ class DevDiagnostics
      * @param string[] $unresolved
      * @param bool $hasBaseline
      */
-    public function evaluateCmsDelta(int $classes, array $unresolved, bool $hasBaseline): CheckResult
+    public function evaluateCmsDelta(int $classes, array $unresolved, bool $hasBaseline = true): CheckResult
     {
         if (!$hasBaseline) {
             return CheckResult::warn(
@@ -233,6 +233,35 @@ class DevDiagnostics
         return $classes === 0
             ? CheckResult::ok('CMS delta', 'The build covers every class written in CMS content.')
             : CheckResult::ok('CMS delta', sprintf('%d class(es) generated on the fly.', $classes));
+    }
+
+    public function evaluateCmsBaseline(array $statuses): CheckResult
+    {
+        $absent = array_keys($statuses, 'absent', true);
+        if ($absent !== []) {
+            return CheckResult::warn(
+                'CMS baseline',
+                sprintf('Built before the class baseline existed: %s.', implode(', ', $absent)),
+                'Rebuild those themes; every class in CMS content is treated as new until then.'
+            );
+        }
+
+        $empty = array_keys($statuses, 'empty', true);
+        if ($empty !== []) {
+            return CheckResult::ok(
+                'CMS baseline',
+                sprintf(
+                    'Built without CMS content: %s. Classes written in CMS come from the on-the-fly delta; '
+                    . 'keep the Tailwind CLI installed and run mage-obsidian:cms:jit after each deploy.',
+                    implode(', ', $empty)
+                )
+            );
+        }
+
+        return CheckResult::ok(
+            'CMS baseline',
+            $statuses === [] ? 'No storefront theme is configured.' : 'Every theme was built with its CMS classes.'
+        );
     }
 
     public function evaluateMode(string $mode): CheckResult

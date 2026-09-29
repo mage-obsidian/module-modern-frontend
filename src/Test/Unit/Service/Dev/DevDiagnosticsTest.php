@@ -454,4 +454,59 @@ class DevDiagnosticsTest extends TestCase
         $this->assertNull($this->diagnostics->extractJsEngineVersion(null));
         $this->assertNull($this->diagnostics->extractJsEngineVersion('not json'));
     }
+
+    public function testCmsBaselineAbsentForAThemeWarnsNamingIt(): void
+    {
+        $r = $this->diagnostics->evaluateCmsBaseline(['Acme/shop' => 'present', 'Acme/old' => 'absent']);
+
+        $this->assertSame(CheckResult::STATUS_WARN, $r->status);
+        $this->assertStringContainsString('Acme/old', $r->message);
+        $this->assertStringNotContainsString('Acme/shop', $r->message);
+    }
+
+    public function testCmsBaselineEmptyIsOkAndExplainsTheRuntimeDelta(): void
+    {
+        $r = $this->diagnostics->evaluateCmsBaseline(['Acme/shop' => 'empty']);
+
+        $this->assertSame(CheckResult::STATUS_OK, $r->status);
+        $this->assertStringContainsString('Acme/shop', $r->message);
+        $this->assertStringContainsString('cms:jit', $r->message);
+    }
+
+    public function testCmsBaselinePresentEverywhereIsOk(): void
+    {
+        $r = $this->diagnostics->evaluateCmsBaseline(['Acme/shop' => 'present']);
+
+        $this->assertSame(CheckResult::STATUS_OK, $r->status);
+    }
+
+    public function testCmsBaselineWithoutConfiguredThemesIsOk(): void
+    {
+        $this->assertSame(CheckResult::STATUS_OK, $this->diagnostics->evaluateCmsBaseline([])->status);
+    }
+
+    public static function baselineAndBinary(): array
+    {
+        return [
+            'baseline absent, binary absent' => ['absent', false],
+            'baseline absent, binary present' => ['absent', true],
+            'baseline empty, binary absent' => ['empty', false],
+            'baseline empty, binary present' => ['empty', true],
+        ];
+    }
+
+    #[DataProvider('baselineAndBinary')]
+    public function testTheBinaryWarningDoesNotDependOnTheBaseline(string $baseline, bool $binary): void
+    {
+        $baselineCheck = $this->diagnostics->evaluateCmsBaseline(['Acme/shop' => $baseline]);
+        $binaryCheck = $this->diagnostics->evaluateTailwindBinary($binary, '/r/bin/tailwindcss', '');
+
+        $this->assertSame($binary ? CheckResult::STATUS_OK : CheckResult::STATUS_WARN, $binaryCheck->status);
+        $this->assertSame('CMS baseline', $baselineCheck->name);
+    }
+
+    public function testCmsDeltaNoLongerNeedsTheBaselineFlag(): void
+    {
+        $this->assertSame(CheckResult::STATUS_OK, $this->diagnostics->evaluateCmsDelta(0, [])->status);
+    }
 }

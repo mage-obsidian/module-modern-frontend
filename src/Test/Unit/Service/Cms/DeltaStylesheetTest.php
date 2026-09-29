@@ -211,6 +211,17 @@ class DeltaStylesheetTest extends TestCase
         $this->assertFalse($this->service()->hasBaseline());
     }
 
+    public function testReportsTheBaselineStatusOfEveryConfiguredTheme(): void
+    {
+        $service = $this->serviceWithThemes(['Acme/shop', 'Acme/outlet']);
+        $this->baseline->method('status')->willReturnOnConsecutiveCalls(CmsBaseline::EMPTY, CmsBaseline::ABSENT);
+
+        $this->assertSame(
+            ['Acme/shop' => CmsBaseline::EMPTY, 'Acme/outlet' => CmsBaseline::ABSENT],
+            $service->baselineStatuses()
+        );
+    }
+
     private function serviceWithThemes(array $codes): DeltaStylesheet
     {
         $stores = [];
