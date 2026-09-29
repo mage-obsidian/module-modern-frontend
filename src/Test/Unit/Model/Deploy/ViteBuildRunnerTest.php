@@ -16,11 +16,11 @@ class ViteBuildRunnerTest extends TestCase
         );
     }
 
-    public function testBuildCommandArgsTranslatesThemeNameToPath(): void
+    public function testBuildCommandArgsPassesAContractThemeCodeVerbatim(): void
     {
         $this->assertSame(
-            ['pnpm', '--prefix', 'vite', 'build', '--theme=Vendor/theme-base'],
-            ViteBuildRunner::buildCommandArgs('pnpm', 'Vendor_theme-base')
+            ['pnpm', '--prefix', 'vite', 'build', '--theme=Acme/my_theme'],
+            ViteBuildRunner::buildCommandArgs('pnpm', 'Acme/my_theme')
         );
     }
 
@@ -28,13 +28,17 @@ class ViteBuildRunnerTest extends TestCase
     {
         $this->assertSame(
             ['/usr/bin/pnpm', '--prefix', 'vite', 'build', '--theme=Acme/Shop'],
-            ViteBuildRunner::buildCommandArgs('/usr/bin/pnpm', 'Acme_Shop')
+            ViteBuildRunner::buildCommandArgs('/usr/bin/pnpm', 'Acme/Shop')
         );
     }
 
+    /**
+     * A theme name carrying shell metacharacters must remain a single argv
+     * element; the array form guarantees no shell ever expands it.
+     */
     public function testBuildCommandArgsDoesNotSplitHostileThemeName(): void
     {
-        $args = ViteBuildRunner::buildCommandArgs('pnpm', 'Evil_x; rm -rf /');
+        $args = ViteBuildRunner::buildCommandArgs('pnpm', 'Evil/x; rm -rf /');
 
         $this->assertCount(5, $args);
         $this->assertSame('--theme=Evil/x; rm -rf /', end($args));
