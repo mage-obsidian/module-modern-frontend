@@ -19,10 +19,10 @@ class RuntimeScriptReaderTest extends TestCase
 
     protected function setUp(): void
     {
+        $this->viewDir = sys_get_temp_dir() . '/runtime-script-reader-' . uniqid();
         if (!class_exists(Reader::class)) {
             $this->markTestSkipped('Magento framework is not available in this runtime.');
         }
-        $this->viewDir = sys_get_temp_dir() . '/runtime-script-reader-' . uniqid();
         mkdir($this->viewDir . '/frontend/runtime', 0777, true);
     }
 
