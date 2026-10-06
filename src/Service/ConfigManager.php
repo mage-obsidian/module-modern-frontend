@@ -14,6 +14,7 @@ use MageObsidian\ModernFrontend\Api\Data\ConfigInterface;
 use MageObsidian\ModernFrontend\Api\ModuleListInterface;
 use MageObsidian\ModernFrontend\Api\ThemeListInterface;
 use MageObsidian\ModernFrontend\Service\Contract\ContractDiff;
+use MageObsidian\ModernFrontend\Service\Contract\ContractFileRefresher;
 use MageObsidian\ModernFrontend\Service\Contract\ContractPaths;
 use Magento\Framework\App\DeploymentConfig\Writer\FormatterInterface;
 use Magento\Framework\App\State;
@@ -54,6 +55,7 @@ class ConfigManager implements ConfigManagerInterface
      * @param State $state
      * @param ModuleDirReader $moduleDirReader
      * @param LoggerInterface $logger
+     * @param ContractFileRefresher $contractFileRefresher
      *
      * @throws LocalizedException
      */
@@ -66,7 +68,8 @@ class ConfigManager implements ConfigManagerInterface
         private readonly FormatterInterface $formatter,
         private readonly State $state,
         private readonly ModuleDirReader $moduleDirReader,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly ContractFileRefresher $contractFileRefresher
     ) {
         $this->CONFIG_PATHS = [
             'php' => $this->directoryList->getPath(DirectoryList::ROOT) . '/' . self::CONFIG_FILE . self::PHP_EXTENSION,
@@ -294,6 +297,7 @@ class ConfigManager implements ConfigManagerInterface
         } elseif ($missingFile) {
             return $this->generate();
         }
+        $this->contractFileRefresher->refresh($this->getConfigFilePath()['php']);
         $this->configData = ContractPaths::absolutize(
             require $this->getConfigFilePath()['php'],
             $this->directoryList->getPath(DirectoryList::ROOT)

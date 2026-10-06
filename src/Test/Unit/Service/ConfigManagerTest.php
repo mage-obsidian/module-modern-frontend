@@ -12,6 +12,7 @@ namespace MageObsidian\ModernFrontend\Test\Unit\Service;
 use MageObsidian\ModernFrontend\Api\ModuleListInterface;
 use MageObsidian\ModernFrontend\Api\ThemeListInterface;
 use MageObsidian\ModernFrontend\Service\ConfigManager;
+use MageObsidian\ModernFrontend\Service\Contract\ContractFileRefresher;
 use Magento\Framework\App\DeploymentConfig\Writer\FormatterInterface;
 use Magento\Framework\App\Filesystem\DirectoryList;
 use Magento\Framework\App\State;
@@ -252,6 +253,34 @@ class ConfigManagerTest extends TestCase
         $this->assertSame(self::ROOT . '/vendor/vendor/in', $manager->get()['modules']['Vendor_In']['src']);
     }
 
+    public function testGetRefreshesTheCompiledContractBeforeRequiringIt(): void
+    {
+        $dir = self::ROOT . '/app/etc';
+        if (!is_dir($dir)) {
+            mkdir($dir, 0777, true);
+        }
+        file_put_contents(
+            $dir . '/mage_obsidian_frontend_modules.php',
+            "<?php return ['schema_version' => '1.1.0', 'modules' => [], 'themes' => []];"
+        );
+        file_put_contents($dir . '/mage_obsidian_frontend_modules.json', '{}');
+        $refresher = $this->createMock(ContractFileRefresher::class);
+        $refresher->expects($this->once())
+            ->method('refresh')
+            ->with(self::ROOT . '/app/etc/mage_obsidian_frontend_modules.php');
+
+        $manager = $this->buildManager(
+            modules: [],
+            themes: [],
+            allModules: [],
+            mode: 'default',
+            existing: true,
+            refresher: $refresher
+        );
+
+        $manager->get();
+    }
+
     public function testDetectDriftFindsNothingRightAfterGenerating(): void
     {
         $manager = $this->buildManager(
@@ -273,14 +302,21 @@ class ConfigManagerTest extends TestCase
      * @param array<string, array> $themes
      * @param string[] $allModules
      */
-    private function buildManager(array $modules, array $themes, array $allModules, string $mode, bool $existing = false): ConfigManager
+    private function buildManager(
+        array $modules,
+        array $themes,
+        array $allModules,
+        string $mode,
+        bool $existing = false,
+        ?ContractFileRefresher $refresher = null
+    ): ConfigManager
     {
         $moduleList = $this->createStub(ModuleListInterface::class);
         $moduleList->method('getAllEnabled')->willReturn($modules);
         $themeList = $this->createStub(ThemeListInterface::class);
         $themeList->method('getAllEnabled')->willReturn($themes);
 
-        return $this->buildManagerWith($moduleList, $themeList, $allModules, $mode, $existing);
+        return $this->buildManagerWith($moduleList, $themeList, $allModules, $mode, $existing, $refresher);
     }
 
     /**
@@ -291,7 +327,8 @@ class ConfigManagerTest extends TestCase
         ThemeListInterface $themeList,
         array $allModules,
         string $mode,
-        bool $existing = false
+        bool $existing = false,
+        ?ContractFileRefresher $refresher = null
     ): ConfigManager {
         $magentoModuleList = $this->createStub(MagentoModuleList::class);
         $magentoModuleList->method('getNames')->willReturn($allModules);
@@ -328,7 +365,8 @@ class ConfigManagerTest extends TestCase
             $formatter,
             $state,
             $moduleDirReader,
-            $this->createStub(LoggerInterface::class)
+            $this->createStub(LoggerInterface::class),
+            $refresher ?? $this->createStub(ContractFileRefresher::class)
         );
     }
 }
