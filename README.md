@@ -1,3 +1,5 @@
+> **Read-only mirror.** This package is developed in [mage-obsidian/framework](https://github.com/mage-obsidian/framework) and copied here automatically. Open issues and pull requests there.
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/mage-obsidian/.github/main/profile/assets/storefront-home.png" alt="MageObsidian storefront — a modern frontend for Magento" width="840">
 </p>
@@ -6,7 +8,7 @@
 
 <p align="center">
   <a href="https://packagist.org/packages/mage-obsidian/module-modern-frontend"><img src="https://img.shields.io/packagist/v/mage-obsidian/module-modern-frontend.svg?style=flat-square" alt="Latest Version"></a>
-  <a href="https://github.com/mage-obsidian/module-modern-frontend/actions/workflows/ci.yml"><img src="https://github.com/mage-obsidian/module-modern-frontend/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/mage-obsidian/framework/actions/workflows/ci.yml"><img src="https://github.com/mage-obsidian/framework/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://packagist.org/packages/mage-obsidian/module-modern-frontend"><img src="https://img.shields.io/packagist/l/mage-obsidian/module-modern-frontend.svg?style=flat-square" alt="License"></a>
 </p>
 

@@ -12,7 +12,7 @@
     ],
     "homepage": "https://mage-obsidian.jeanmarcos.dev/",
     "support": {
-        "issues": "https://github.com/mage-obsidian/module-modern-frontend/issues",
+        "issues": "https://github.com/mage-obsidian/framework/issues",
         "docs": "https://mage-obsidian.jeanmarcos.dev/",
         "source": "https://github.com/mage-obsidian/module-modern-frontend"
     },
@@ -52,5 +52,10 @@
     },
     "conflict": {
         "mage-obsidian/component-modern-frontend": "<2.7.0"
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-master": "4.x-dev"
+        }
     }
 }
