@@ -24,7 +24,6 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import {
-    parseSectionStorage,
     selectSection,
     mergeSections,
     patchSection,
@@ -34,9 +33,13 @@ import {
     sessionInvalidated,
     expiredSectionNames,
     takeSectionPrefetch,
+    readScopedSections,
+    sectionScope,
+    writeScopedSections,
     type SectionData,
     type SectionMap,
 } from 'mage-obsidian/runtime/sectionStoreCore.ts';
+import { siteConfig, writeCookie } from 'mage-obsidian/runtime/cookies.ts';
 import { ensureSharedPinia } from 'MageObsidian_ModernFrontend::js/store';
 import {
     bindRehydrateOnRestore,
@@ -90,11 +93,17 @@ export function createSectionStore(config: SectionStoreConfig) {
     // Activate the shared Pinia before any component calls the store.
     ensureSharedPinia();
 
+    const storageKeys = { sections: storageKey, version: versionKey, website: `${storageKey}-website` };
+
+    function currentScope(): string | null {
+        return sectionScope(siteConfig());
+    }
+
     function readStorage(): SectionMap {
         if (typeof localStorage === 'undefined') {
             return {};
         }
-        return parseSectionStorage(localStorage.getItem(storageKey));
+        return readScopedSections(localStorage, storageKeys, currentScope());
     }
 
     /** The current version the producer advertises via cookie. */
@@ -108,8 +117,8 @@ export function createSectionStore(config: SectionStoreConfig) {
         if (!sessionCookie || typeof document === 'undefined') {
             return;
         }
-        const secure = typeof location !== 'undefined' && location.protocol === 'https:' ? '; Secure' : '';
-        document.cookie = `${sessionCookie}=1; path=/; SameSite=Lax${secure}`;
+        const https = typeof location !== 'undefined' && location.protocol === 'https:';
+        writeCookie(sessionCookie, '1', { secure: siteConfig() ? undefined : https, domain: '' });
     }
 
     function readSyncedVersion(): string {
@@ -130,10 +139,7 @@ export function createSectionStore(config: SectionStoreConfig) {
             return;
         }
         try {
-            localStorage.setItem(storageKey, JSON.stringify(sections));
-            if (syncedVersion !== undefined) {
-                localStorage.setItem(versionKey, syncedVersion);
-            }
+            writeScopedSections(localStorage, storageKeys, sections, currentScope(), syncedVersion);
         } catch {
             // Storage may be full or unavailable (private mode); the in-memory
             // snapshot still works for this page.

@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace MageObsidian\ModernFrontend\ViewModel;
 
 use InvalidArgumentException;
+use Magento\Csp\Model\SubresourceIntegrity\SriEnabledActions;
+use Magento\Framework\App\Request\Http;
 use Magento\Framework\App\RequestInterface;
 use Magento\Framework\Locale\ResolverInterface as LocaleResolver;
 use Magento\Framework\View\Asset\Repository;
@@ -53,6 +55,7 @@ class ViteResolver implements ArgumentInterface
      * @param LocaleResolver $localeResolver
      * @param EagerIslandRegistry $eagerIslandRegistry
      * @param IslandManifest $islandManifest
+     * @param SriEnabledActions $sriEnabledActions
      */
     public function __construct(
         private readonly Repository $assetRepository,
@@ -60,8 +63,63 @@ class ViteResolver implements ArgumentInterface
         private readonly ConfigProvider $configProvider,
         private readonly LocaleResolver $localeResolver,
         private readonly EagerIslandRegistry $eagerIslandRegistry,
-        private readonly IslandManifest $islandManifest
+        private readonly IslandManifest $islandManifest,
+        private readonly SriEnabledActions $sriEnabledActions
     ) {
+    }
+
+    public function getIntegrityAttributes(string $path): array
+    {
+        if (!$this->isPaymentPage()) {
+            return [];
+        }
+
+        $hash = $this->islandManifest->getIntegrityMap()[$this->withJsExtension($this->buildFilePath($path))] ?? null;
+
+        return $hash === null ? [] : ['integrity' => $hash, 'crossorigin' => 'anonymous'];
+    }
+
+    public function getIslandsRuntimeIntegrityAttributes(): array
+    {
+        return $this->getIntegrityAttributes(self::ISLANDS_RUNTIME_NAME);
+    }
+
+    public function getImportMapIntegrity(): array
+    {
+        if (!$this->isPaymentPage()) {
+            return [];
+        }
+
+        $integrity = [];
+        foreach ($this->islandManifest->getIntegrityMap() as $file => $hash) {
+            $integrity[$this->getViteFileUrl($file)] = $hash;
+        }
+
+        return $integrity;
+    }
+
+    public function getImportMap(): array
+    {
+        $map = ['imports' => ['vue' => $this->getViewLibFileUrl('vue')]];
+        $integrity = $this->getImportMapIntegrity();
+
+        return $integrity === [] ? $map : $map + ['integrity' => $integrity];
+    }
+
+    private function isPaymentPage(): bool
+    {
+        return $this->request instanceof Http
+            && $this->sriEnabledActions->isPaymentPageAction($this->request->getFullActionName());
+    }
+
+    private function buildFilePath(string $path): string
+    {
+        return str_contains($path, '::') ? $this->buildRelativePath($path) : $path;
+    }
+
+    private function withJsExtension(string $path): string
+    {
+        return pathinfo($path, PATHINFO_EXTENSION) ? $path : $path . '.js';
     }
 
     /**
@@ -258,15 +316,26 @@ class ViteResolver implements ArgumentInterface
             return '';
         }
 
-        $urls = [];
+        $urlFiles = [];
         foreach ($this->islandManifest->getPreloadFiles([$componentFile]) as $file) {
-            $urls[] = $this->getViteFileUrl($file);
+            $urlFiles[$this->getViteFileUrl($file)] = $file;
         }
 
         $html = '';
-        foreach ($this->eagerIslandRegistry->take($urls) as $url) {
+        foreach ($this->eagerIslandRegistry->take(array_keys($urlFiles)) as $url) {
             $href = htmlspecialchars($url, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-            $html .= "<link rel=\"modulepreload\" href=\"{$href}\" fetchpriority=\"low\"/>";
+            $integrity = $this->renderIntegrityAttributes($urlFiles[$url]);
+            $html .= "<link rel=\"modulepreload\" href=\"{$href}\"{$integrity} fetchpriority=\"low\"/>";
+        }
+
+        return $html;
+    }
+
+    private function renderIntegrityAttributes(string $file): string
+    {
+        $html = '';
+        foreach ($this->getIntegrityAttributes($file) as $name => $value) {
+            $html .= ' ' . $name . '="' . htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"';
         }
 
         return $html;

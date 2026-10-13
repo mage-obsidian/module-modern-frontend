@@ -307,6 +307,77 @@ class ViteOutputVerifierTest extends TestCase
         );
     }
 
+    public function testReportsADeployedScriptWhoseContentNoLongerMatchesTheManifestHash(): void
+    {
+        $verifier = $this->verifier(
+            built: ['lib/vue.js', 'MageObsidian_Storefront/js/nav.js', '.vite/manifest.json'],
+            published: ['lib/vue.js', 'MageObsidian_Storefront/js/nav.js'],
+            manifest: [
+                'lib/vue' => ['file' => 'lib/vue.js', 'integrity' => self::hashOf('vue')],
+                'nav' => ['file' => 'MageObsidian_Storefront/js/nav.js', 'integrity' => self::hashOf('nav')],
+            ],
+            deployed: ['lib/vue.js' => 'vue', 'MageObsidian_Storefront/js/nav.js' => 'nav; steal()']
+        );
+
+        $this->assertSame(
+            ['MageObsidian/default@en_US' => ['MageObsidian_Storefront/js/nav.js']],
+            self::flatten($verifier->findTampered($this->options(['en_US'])))
+        );
+    }
+
+    public function testReportsNothingWhenEveryDeployedScriptMatchesItsHash(): void
+    {
+        $verifier = $this->verifier(
+            built: ['lib/vue.js', '.vite/manifest.json'],
+            published: ['lib/vue.js'],
+            manifest: ['lib/vue' => ['file' => 'lib/vue.js', 'integrity' => self::hashOf('vue')]],
+            deployed: ['lib/vue.js' => 'vue']
+        );
+
+        $this->assertSame([], $verifier->findTampered($this->options(['en_US'])));
+    }
+
+    public function testIgnoresManifestEntriesThatCarryNoHash(): void
+    {
+        $verifier = $this->verifier(
+            built: ['css/style.css', '.vite/manifest.json'],
+            published: ['css/style.css'],
+            manifest: ['css/style' => ['file' => 'css/style.css']],
+            deployed: ['css/style.css' => 'body{}']
+        );
+
+        $this->assertSame([], $verifier->findTampered($this->options(['en_US'])));
+    }
+
+    public function testStaysQuietWhenTheBuildLeftNoManifest(): void
+    {
+        $verifier = $this->verifier(built: ['lib/vue.js'], published: ['lib/vue.js']);
+
+        $this->assertSame([], $verifier->findTampered($this->options(['en_US'])));
+    }
+
+    public function testChecksTheDeployedCopyOfEveryLocale(): void
+    {
+        $verifier = $this->verifier(
+            built: ['lib/vue.js', '.vite/manifest.json'],
+            published: [],
+            publishedPerLocale: ['en_US' => ['lib/vue.js'], 'es_ES' => ['lib/vue.js']],
+            manifest: ['lib/vue' => ['file' => 'lib/vue.js', 'integrity' => self::hashOf('vue')]],
+            deployed: ['lib/vue.js' => 'vue'],
+            deployedPerLocale: ['es_ES' => ['lib/vue.js' => 'tampered']]
+        );
+
+        $this->assertSame(
+            ['MageObsidian/default@es_ES' => ['lib/vue.js']],
+            self::flatten($verifier->findTampered($this->options(['en_US', 'es_ES'])))
+        );
+    }
+
+    private static function hashOf(string $content): string
+    {
+        return 'sha384-' . base64_encode(hash('sha384', $content, true));
+    }
+
     /**
      * @param array<string, ViteOutputTarget> $outdated
      * @return array<string, string[]>
@@ -357,7 +428,10 @@ class ViteOutputVerifierTest extends TestCase
         ?DeployTargets $targets = null,
         bool $withParentTheme = false,
         array $sizes = [],
-        array $times = []
+        array $times = [],
+        ?array $manifest = null,
+        array $deployed = [],
+        array $deployedPerLocale = []
     ): ViteOutputVerifier {
         $themes = [self::THEME => ['src' => self::SRC, 'parent' => null]];
         if ($withParentTheme) {
@@ -398,7 +472,10 @@ class ViteOutputVerifierTest extends TestCase
         );
 
         $driver->method('isExists')->willReturnCallback(
-            static function (string $path) use ($published, $publishedPerLocale): bool {
+            static function (string $path) use ($published, $publishedPerLocale, $sourceDir, $manifest): bool {
+                if ($path === $sourceDir . '/.vite/manifest.json') {
+                    return $manifest !== null;
+                }
                 foreach ($publishedPerLocale ?? ['en_US' => $published] as $locale => $files) {
                     $base = self::ROOT . '/pub/static/frontend/' . self::THEME . '/' . $locale . '/generated/';
                     foreach ($files as $file) {
@@ -408,6 +485,29 @@ class ViteOutputVerifierTest extends TestCase
                     }
                 }
                 return false;
+            }
+        );
+
+        $driver->method('fileGetContents')->willReturnCallback(
+            static function (string $path) use ($sourceDir, $manifest, $deployed, $deployedPerLocale): string {
+                if ($path === $sourceDir . '/.vite/manifest.json') {
+                    return json_encode($manifest ?? [], JSON_THROW_ON_ERROR);
+                }
+                foreach ($deployedPerLocale as $locale => $files) {
+                    $base = self::ROOT . '/pub/static/frontend/' . self::THEME . '/' . $locale . '/generated/';
+                    foreach ($files as $file => $content) {
+                        if ($path === $base . $file) {
+                            return $content;
+                        }
+                    }
+                }
+                $base = self::ROOT . '/pub/static/frontend/' . self::THEME . '/en_US/generated/';
+                foreach ($deployed as $file => $content) {
+                    if ($path === $base . $file) {
+                        return $content;
+                    }
+                }
+                return '';
             }
         );
 

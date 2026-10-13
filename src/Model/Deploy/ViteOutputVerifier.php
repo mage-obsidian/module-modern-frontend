@@ -45,6 +45,8 @@ class ViteOutputVerifier
 
     private const WEB_PATH = 'web';
 
+    private const MANIFEST_FILE = '.vite/manifest.json';
+
     public function __construct(
         private readonly ConfigManagerInterface $configManager,
         private readonly DirectoryList $directoryList,
@@ -100,6 +102,78 @@ class ViteOutputVerifier
         }
 
         return $outdated;
+    }
+
+    public function findTampered(array $options): array
+    {
+        $locales = $this->targets->locales($options);
+        if ($locales === []) {
+            return [];
+        }
+
+        $staticRoot = $this->directoryList->getPath(DirectoryList::STATIC_VIEW);
+        $tampered = [];
+
+        foreach ($this->configManager->get()['themes'] ?? [] as $theme => $definition) {
+            if (!$this->targets->includesTheme((string)$theme, $options)) {
+                continue;
+            }
+
+            $source = $definition['src'] . '/' . self::WEB_PATH . '/' . ConfigInterface::GENERATED_PATH;
+            $hashes = $this->builtHashes($source);
+            if ($hashes === []) {
+                continue;
+            }
+
+            foreach ($locales as $locale) {
+                $target = $staticRoot . '/' . self::AREA . '/' . $theme . '/' . $locale
+                    . '/' . ConfigInterface::GENERATED_PATH;
+
+                $files = array_keys(array_filter(
+                    $hashes,
+                    fn (string $hash, string $file): bool => $this->deployedHash($target . '/' . $file) !== $hash,
+                    ARRAY_FILTER_USE_BOTH
+                ));
+
+                if ($files !== []) {
+                    $entry = new ViteOutputTarget((string)$theme, (string)$locale, $source, $target, $files);
+                    $tampered[$entry->label()] = $entry;
+                }
+            }
+        }
+
+        return $tampered;
+    }
+
+    private function builtHashes(string $source): array
+    {
+        $manifest = $source . '/' . self::MANIFEST_FILE;
+        if (!$this->driver->isExists($manifest)) {
+            return [];
+        }
+
+        $decoded = json_decode($this->driver->fileGetContents($manifest), true);
+        $hashes = [];
+        foreach (is_array($decoded) ? $decoded : [] as $entry) {
+            if (is_array($entry) && is_string($entry['file'] ?? null) && is_string($entry['integrity'] ?? null)) {
+                $hashes[$entry['file']] = $entry['integrity'];
+            }
+        }
+
+        return $hashes;
+    }
+
+    private function deployedHash(string $path): ?string
+    {
+        if (!$this->driver->isExists($path)) {
+            return null;
+        }
+
+        try {
+            return 'sha384-' . base64_encode(hash('sha384', $this->driver->fileGetContents($path), true));
+        } catch (FileSystemException) {
+            return null;
+        }
     }
 
     public function findUnbuilt(array $options): array

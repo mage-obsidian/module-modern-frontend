@@ -46,6 +46,11 @@ class IslandsRuntime extends AbstractBlock
             'UTF-8'
         );
 
-        return "<script type=\"module\" src=\"{$url}\" fetchpriority=\"low\"></script>";
+        $integrity = '';
+        foreach ($this->viteResolver->getIslandsRuntimeIntegrityAttributes() as $name => $value) {
+            $integrity .= ' ' . $name . '="' . htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"';
+        }
+
+        return "<script type=\"module\" src=\"{$url}\"{$integrity} fetchpriority=\"low\"></script>";
     }
 }

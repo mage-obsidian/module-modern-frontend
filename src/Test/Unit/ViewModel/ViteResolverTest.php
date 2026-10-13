@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace MageObsidian\ModernFrontend\Test\Unit\ViewModel;
 
 use InvalidArgumentException;
+use Magento\Csp\Model\SubresourceIntegrity\SriEnabledActions;
+use Magento\Framework\App\Request\Http;
 use Magento\Framework\App\RequestInterface;
 use Magento\Framework\Locale\ResolverInterface as LocaleResolver;
 use Magento\Framework\View\Asset\Repository;
@@ -37,19 +39,26 @@ class ViteResolverTest extends TestCase
     {
         $this->eagerIslandRegistry = new EagerIslandRegistry();
         $this->preloadFiles = [];
+        $this->integrity = [];
     }
+
+    private const PAYMENT_ACTION = 'checkout_index_index';
+
+    private array $integrity = [];
 
     private function buildResolver(
         string $viteGeneratedPath = 'vite_generated',
-        bool $islandPreload = true
+        bool $islandPreload = true,
+        string $action = 'catalog_category_view'
     ): ViteResolver {
         $repository = $this->createMock(Repository::class);
         // Echo the resolved fileId so path composition is observable.
         $repository->method('getUrlWithParams')
             ->willReturnCallback(static fn(string $fileId, array $params): string => '/static/' . $fileId);
 
-        $request = $this->createMock(RequestInterface::class);
+        $request = $this->createMock(Http::class);
         $request->method('isSecure')->willReturn(false);
+        $request->method('getFullActionName')->willReturn($action);
 
         $configProvider = $this->createMock(ConfigProvider::class);
         $configProvider->method('getViteGeneratedPath')->willReturn($viteGeneratedPath);
@@ -60,6 +69,7 @@ class ViteResolverTest extends TestCase
 
         $islandManifest = $this->createMock(IslandManifest::class);
         $islandManifest->method('getPreloadFiles')->willReturnCallback(fn(): array => $this->preloadFiles);
+        $islandManifest->method('getIntegrityMap')->willReturnCallback(fn(): array => $this->integrity);
 
         return new ViteResolver(
             $repository,
@@ -67,7 +77,8 @@ class ViteResolverTest extends TestCase
             $configProvider,
             $locale,
             $this->eagerIslandRegistry,
-            $islandManifest
+            $islandManifest,
+            new SriEnabledActions(['checkout' => self::PAYMENT_ACTION])
         );
     }
 
@@ -116,11 +127,165 @@ class ViteResolverTest extends TestCase
             $configProvider,
             $locale,
             $this->eagerIslandRegistry,
-            $this->createMock(IslandManifest::class)
+            $this->createMock(IslandManifest::class),
+            new SriEnabledActions()
         ))->getViteFileUrl('lib/vue');
 
         $this->assertStringNotContainsString("\n", $url);
         $this->assertSame('/static/version123/vite_generated/lib/vue.js', $url);
+    }
+
+    public function testAPaymentPageScriptCarriesItsHashAndCrossorigin(): void
+    {
+        $this->integrity = ['MageObsidian_Storefront/js/nav.js' => 'sha384-nav'];
+
+        $this->assertSame(
+            ['integrity' => 'sha384-nav', 'crossorigin' => 'anonymous'],
+            $this->buildResolver(action: self::PAYMENT_ACTION)
+                ->getIntegrityAttributes('MageObsidian_Storefront/js/nav')
+        );
+    }
+
+    public function testAModuleQualifiedScriptNameResolvesToItsBuiltFile(): void
+    {
+        $this->integrity = ['MageObsidian_Storefront/js/nav.js' => 'sha384-nav'];
+
+        $this->assertSame(
+            ['integrity' => 'sha384-nav', 'crossorigin' => 'anonymous'],
+            $this->buildResolver(action: self::PAYMENT_ACTION)
+                ->getIntegrityAttributes('MageObsidian_Storefront::js/nav')
+        );
+    }
+
+    public function testTheIslandsRuntimeCarriesItsHashOnAPaymentPage(): void
+    {
+        $this->integrity = ['MageObsidian_ModernFrontend/js/islands.js' => 'sha384-islands'];
+
+        $this->assertSame(
+            ['integrity' => 'sha384-islands', 'crossorigin' => 'anonymous'],
+            $this->buildResolver(action: self::PAYMENT_ACTION)->getIslandsRuntimeIntegrityAttributes()
+        );
+    }
+
+    public function testAPageThatIsNotAPaymentPageGetsNoIntegrity(): void
+    {
+        $this->integrity = ['MageObsidian_Storefront/js/nav.js' => 'sha384-nav'];
+
+        $this->assertSame(
+            [],
+            $this->buildResolver()->getIntegrityAttributes('MageObsidian_Storefront/js/nav')
+        );
+    }
+
+    public function testAPaymentPageScriptTheBuildNeverHashedGetsNoAttributes(): void
+    {
+        $this->assertSame(
+            [],
+            $this->buildResolver(action: self::PAYMENT_ACTION)->getIntegrityAttributes('Vendor/js/unknown')
+        );
+    }
+
+    public function testEagerPreloadOnAPaymentPageCarriesIntegrity(): void
+    {
+        $this->preloadFiles = ['Vendor/components/Card.js', 'lib/pinia.js'];
+        $this->integrity = ['Vendor/components/Card.js' => 'sha384-card', 'lib/pinia.js' => 'sha384-pinia'];
+
+        $html = $this->buildResolver(action: self::PAYMENT_ACTION)
+            ->renderVueComponent('Vendor::Card', [], true);
+
+        $this->assertStringContainsString(
+            '<link rel="modulepreload" href="/static/vite_generated/Vendor/components/Card.js" '
+            . 'integrity="sha384-card" crossorigin="anonymous" fetchpriority="low"/>',
+            $html
+        );
+        $this->assertStringContainsString(
+            '<link rel="modulepreload" href="/static/vite_generated/lib/pinia.js" '
+            . 'integrity="sha384-pinia" crossorigin="anonymous" fetchpriority="low"/>',
+            $html
+        );
+    }
+
+    public function testEagerPreloadOffAPaymentPageCarriesNoIntegrity(): void
+    {
+        $this->preloadFiles = ['Vendor/components/Card.js'];
+        $this->integrity = ['Vendor/components/Card.js' => 'sha384-card'];
+
+        $this->assertStringNotContainsString(
+            'integrity',
+            $this->buildResolver()->renderVueComponent('Vendor::Card', [], true)
+        );
+    }
+
+    public function testTheImportMapIntegrityCoversEveryHashedChunkOnAPaymentPage(): void
+    {
+        $this->integrity = [
+            'lib/vue.js' => 'sha384-vue',
+            'assets/lazy-1.js' => 'sha384-lazy',
+        ];
+
+        $this->assertSame(
+            [
+                '/static/vite_generated/lib/vue.js' => 'sha384-vue',
+                '/static/vite_generated/assets/lazy-1.js' => 'sha384-lazy',
+            ],
+            $this->buildResolver(action: self::PAYMENT_ACTION)->getImportMapIntegrity()
+        );
+    }
+
+    public function testTheImportMapIntegrityIsEmptyOffAPaymentPage(): void
+    {
+        $this->integrity = ['lib/vue.js' => 'sha384-vue'];
+
+        $this->assertSame([], $this->buildResolver()->getImportMapIntegrity());
+    }
+
+    public function testARequestWithoutAnActionNameIsNeverAPaymentPage(): void
+    {
+        $this->integrity = ['lib/vue.js' => 'sha384-vue'];
+        $repository = $this->createStub(Repository::class);
+        $repository->method('getUrlWithParams')->willReturn('/static/vite_generated/lib/vue.js');
+        $configProvider = $this->createStub(ConfigProvider::class);
+        $configProvider->method('getViteGeneratedPath')->willReturn('vite_generated');
+        $islandManifest = $this->createStub(IslandManifest::class);
+        $islandManifest->method('getIntegrityMap')->willReturn($this->integrity);
+
+        $resolver = new ViteResolver(
+            $repository,
+            $this->createStub(RequestInterface::class),
+            $configProvider,
+            $this->createStub(LocaleResolver::class),
+            $this->eagerIslandRegistry,
+            $islandManifest,
+            new SriEnabledActions([self::PAYMENT_ACTION])
+        );
+
+        $this->assertSame([], $resolver->getImportMapIntegrity());
+    }
+
+    public function testTheImportMapMapsVueAndCarriesIntegrityOnAPaymentPage(): void
+    {
+        $this->integrity = ['lib/vue.js' => 'sha384-vue', 'assets/lazy-1.js' => 'sha384-lazy'];
+
+        $this->assertSame(
+            [
+                'imports' => ['vue' => '/static/vite_generated/lib/vue.js'],
+                'integrity' => [
+                    '/static/vite_generated/lib/vue.js' => 'sha384-vue',
+                    '/static/vite_generated/assets/lazy-1.js' => 'sha384-lazy',
+                ],
+            ],
+            $this->buildResolver(action: self::PAYMENT_ACTION)->getImportMap()
+        );
+    }
+
+    public function testTheImportMapOffAPaymentPageHasNoIntegritySection(): void
+    {
+        $this->integrity = ['lib/vue.js' => 'sha384-vue'];
+
+        $this->assertSame(
+            ['imports' => ['vue' => '/static/vite_generated/lib/vue.js']],
+            $this->buildResolver()->getImportMap()
+        );
     }
 
     public function testResolvePathByNameSplitsVendorAndPath(): void

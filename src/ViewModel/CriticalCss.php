@@ -14,6 +14,7 @@ use Magento\Framework\View\Element\Block\ArgumentInterface;
 use Magento\Framework\View\LayoutInterface;
 use Magento\Store\Model\ScopeInterface;
 use MageObsidian\ModernFrontend\Service\CriticalCssProvider;
+use MageObsidian\ModernFrontend\Service\Csp\InlineStylePolicy;
 
 /**
  * Feeds the critical-CSS head block and gates the stylesheet defer.
@@ -35,12 +36,17 @@ class CriticalCss implements ArgumentInterface
     public function __construct(
         private readonly CriticalCssProvider $provider,
         private readonly LayoutInterface $layout,
-        private readonly ScopeConfigInterface $scopeConfig
+        private readonly ScopeConfigInterface $scopeConfig,
+        private readonly InlineStylePolicy $inlineStylePolicy
     ) {
     }
 
     public function getCriticalCssData(): string
     {
+        if ($this->inlineStylePolicy->allowsInlineStyles()) {
+            return '';
+        }
+
         $critical = $this->resolveCritical();
 
         return $critical !== '' ? $critical : self::VCLOAK;
@@ -48,7 +54,9 @@ class CriticalCss implements ArgumentInterface
 
     public function hasCriticalCss(): bool
     {
-        return $this->isEnabled() && $this->resolveCritical() !== '';
+        return $this->isEnabled()
+            && !$this->inlineStylePolicy->allowsInlineStyles()
+            && $this->resolveCritical() !== '';
     }
 
     private function isEnabled(): bool

@@ -80,6 +80,28 @@ class IslandManifest
         return self::collectComponentNames($this->loadManifest());
     }
 
+    public function getIntegrityMap(): array
+    {
+        return self::collectIntegrity($this->loadManifest());
+    }
+
+    public static function collectIntegrity(array $manifest): array
+    {
+        $integrity = [];
+        foreach ($manifest as $entry) {
+            if (!is_array($entry)) {
+                continue;
+            }
+            $file = $entry['file'] ?? null;
+            $hash = $entry['integrity'] ?? null;
+            if (is_string($file) && is_string($hash) && str_ends_with($file, '.js')) {
+                $integrity[$file] = $hash;
+            }
+        }
+
+        return $integrity;
+    }
+
     /**
      * The inverse of the name ViteResolver builds: an output chunk sitting at
      * `<Vendor_Module>/components/<path>.js` came from `Vendor_Module::<path>`,

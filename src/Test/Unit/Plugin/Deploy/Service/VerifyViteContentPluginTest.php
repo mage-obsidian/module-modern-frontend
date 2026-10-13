@@ -195,6 +195,57 @@ class VerifyViteContentPluginTest extends TestCase
         $this->assertStringContainsString('did not publish the whole Vite build', $this->output->fetch());
     }
 
+    public function testNamesAScriptWhoseDeployedContentNoLongerMatchesItsHash(): void
+    {
+        $target = $this->target(['MageObsidian_Storefront/js/nav.js']);
+        $verifier = $this->createStub(ViteOutputVerifier::class);
+        $verifier->method('findTampered')->willReturn([$target->label() => $target]);
+
+        $this->pluginWith($verifier)->afterDeploy($this->subject(), null, $this->options());
+
+        $written = $this->output->fetch();
+        $this->assertStringContainsString('MageObsidian/default@en_US', $written);
+        $this->assertStringContainsString('MageObsidian_Storefront/js/nav.js', $written);
+        $this->assertStringContainsString('integrity', $written);
+    }
+
+    public function testStrictModeFailsTheDeployForATamperedScript(): void
+    {
+        putenv('MAGE_OBSIDIAN_STRICT_DEPLOY=1');
+        $target = $this->target(['MageObsidian_Storefront/js/nav.js']);
+        $verifier = $this->createStub(ViteOutputVerifier::class);
+        $verifier->method('findTampered')->willReturn([$target->label() => $target]);
+
+        $this->expectException(LocalizedException::class);
+
+        $this->pluginWith($verifier)->afterDeploy($this->subject(), null, $this->options());
+    }
+
+    public function testChecksIntegrityOnlyAfterRepublishingWhatWasOutOfDate(): void
+    {
+        $target = $this->target(['css/style.css']);
+        $calls = [];
+
+        $verifier = $this->createStub(ViteOutputVerifier::class);
+        $verifier->method('findOutdated')->willReturnCallback(function () use (&$calls, $target): array {
+            $calls[] = 'outdated';
+            return [$target->label() => $target];
+        });
+        $verifier->method('findTampered')->willReturnCallback(function () use (&$calls): array {
+            $calls[] = 'tampered';
+            return [];
+        });
+        $publisher = $this->createStub(ViteOutputPublisher::class);
+        $publisher->method('publish')->willReturnCallback(function () use (&$calls): array {
+            $calls[] = 'publish';
+            return [];
+        });
+
+        $this->pluginWith($verifier, $publisher)->afterDeploy($this->subject(), null, $this->options());
+
+        $this->assertSame(['outdated', 'publish', 'tampered'], $calls);
+    }
+
     private function pluginWithUnbuilt(array $unbuilt, array $outdated, array $failed = []): VerifyViteContentPlugin
     {
         $verifier = $this->createStub(ViteOutputVerifier::class);

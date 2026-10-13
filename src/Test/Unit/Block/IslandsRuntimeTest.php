@@ -56,4 +56,21 @@ class IslandsRuntimeTest extends TestCase
 
         $this->assertStringContainsString('fetchpriority="low"', $html);
     }
+
+    public function testTheBootstrapCarriesItsIntegrityOnAPaymentPage(): void
+    {
+        $resolver = $this->createMock(ViteResolver::class);
+        $resolver->method('getIslandsRuntimeUrl')->willReturn('/islands.js');
+        $resolver->method('getIslandsRuntimeIntegrityAttributes')
+            ->willReturn(['integrity' => 'sha384-islands', 'crossorigin' => 'anonymous']);
+
+        $block = new IslandsRuntime($this->createMock(Context::class), $resolver);
+        $html = (string)(new \ReflectionMethod($block, '_toHtml'))->invoke($block);
+
+        $this->assertSame(
+            '<script type="module" src="/islands.js" integrity="sha384-islands" crossorigin="anonymous"'
+            . ' fetchpriority="low"></script>',
+            $html
+        );
+    }
 }

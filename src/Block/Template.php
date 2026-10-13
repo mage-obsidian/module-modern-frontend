@@ -84,6 +84,11 @@ class Template extends MagentoTemplate
         return $this->viteResolver->getViewLibFileUrl($path);
     }
 
+    public function getImportMap(): array
+    {
+        return $this->viteResolver->getImportMap();
+    }
+
     /**
      * Resolve the file path by its name.
      *

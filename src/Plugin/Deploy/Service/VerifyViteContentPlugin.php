@@ -77,11 +77,22 @@ class VerifyViteContentPlugin
             )->render());
         }
 
-        $outdated = $this->verifier->findOutdated($options);
-        if ($outdated === []) {
-            return $result;
+        $this->republish($this->verifier->findOutdated($options));
+
+        $tampered = $this->verifier->findTampered($options);
+        if ($tampered !== []) {
+            $this->report(__(
+                'Deployed Vite scripts do not match the subresource integrity hashes of their build, so '
+                . 'browsers will refuse to run them on payment pages. %1.',
+                $this->describe($tampered, '%s has %d script(s) that differ from their hash (%s%s)')
+            )->render());
         }
 
+        return $result;
+    }
+
+    private function republish(array $outdated): void
+    {
         $republished = 0;
         $failures = [];
         foreach ($outdated as $target) {
@@ -113,8 +124,6 @@ class VerifyViteContentPlugin
                 $this->describe($failures)
             )->render());
         }
-
-        return $result;
     }
 
     private function report(string $message): void
@@ -141,13 +150,13 @@ class VerifyViteContentPlugin
     /**
      * @param ViteOutputTarget[] $failures
      */
-    private function describe(array $failures): string
+    private function describe(array $failures, string $format = '%s is missing %d file(s) (%s%s)'): string
     {
         $described = [];
         foreach ($failures as $target) {
             $sample = array_slice($target->files, 0, self::SAMPLE_SIZE);
             $described[] = sprintf(
-                '%s is missing %d file(s) (%s%s)',
+                $format,
                 $target->label(),
                 count($target->files),
                 implode(', ', $sample),

@@ -13,6 +13,7 @@ use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\View\Layout\ProcessorInterface;
 use Magento\Framework\View\LayoutInterface;
 use MageObsidian\ModernFrontend\Service\CriticalCssProvider;
+use MageObsidian\ModernFrontend\Service\Csp\InlineStylePolicy;
 use MageObsidian\ModernFrontend\ViewModel\CriticalCss;
 use PHPUnit\Framework\TestCase;
 
@@ -35,7 +36,8 @@ class CriticalCssTest extends TestCase
         $viewModel = new CriticalCss(
             $provider,
             $this->layoutWithHandles(['default', 'cms_index_index']),
-            $this->scopeConfig(true)
+            $this->scopeConfig(true),
+            $this->policy(false)
         );
 
         $this->assertSame('.hero{color:#000}', $viewModel->getCriticalCssData());
@@ -52,7 +54,8 @@ class CriticalCssTest extends TestCase
         $viewModel = new CriticalCss(
             $provider,
             $this->layoutWithHandles(['default', 'catalog_category_view']),
-            $this->scopeConfig(true)
+            $this->scopeConfig(true),
+            $this->policy(false)
         );
 
         $this->assertSame('.base{}', $viewModel->getCriticalCssData());
@@ -66,7 +69,8 @@ class CriticalCssTest extends TestCase
         $viewModel = new CriticalCss(
             $provider,
             $this->layoutWithHandles(['default']),
-            $this->scopeConfig(true)
+            $this->scopeConfig(true),
+            $this->policy(false)
         );
 
         $this->assertSame(self::VCLOAK, $viewModel->getCriticalCssData());
@@ -80,7 +84,8 @@ class CriticalCssTest extends TestCase
         $viewModel = new CriticalCss(
             $provider,
             $this->layoutWithHandles(['default']),
-            $this->scopeConfig(true)
+            $this->scopeConfig(true),
+            $this->policy(false)
         );
 
         $this->assertTrue($viewModel->hasCriticalCss());
@@ -93,7 +98,7 @@ class CriticalCssTest extends TestCase
         $layout = $this->createMock(LayoutInterface::class);
         $layout->expects($this->never())->method('getUpdate');
 
-        $viewModel = new CriticalCss($provider, $layout, $this->scopeConfig(false));
+        $viewModel = new CriticalCss($provider, $layout, $this->scopeConfig(false), $this->policy(false));
 
         $this->assertFalse($viewModel->hasCriticalCss());
     }
@@ -106,7 +111,8 @@ class CriticalCssTest extends TestCase
         $viewModel = new CriticalCss(
             $provider,
             $this->layoutWithHandles(['default']),
-            $this->scopeConfig(true)
+            $this->scopeConfig(true),
+            $this->policy(false)
         );
 
         $this->assertFalse($viewModel->hasCriticalCss());
@@ -131,5 +137,29 @@ class CriticalCssTest extends TestCase
         $scopeConfig->method('isSetFlag')->willReturn($enabled);
 
         return $scopeConfig;
+    }
+
+    public function testAPageThatAllowsInlineStylesGetsNoInlineCriticalAndARenderBlockingSheet(): void
+    {
+        $provider = $this->createStub(CriticalCssProvider::class);
+        $provider->method('getCriticalCss')->willReturn('.hero{}');
+
+        $viewModel = new CriticalCss(
+            $provider,
+            $this->layoutWithHandles(['default', 'checkout_index_index']),
+            $this->scopeConfig(true),
+            $this->policy(true)
+        );
+
+        $this->assertSame('', $viewModel->getCriticalCssData());
+        $this->assertFalse($viewModel->hasCriticalCss());
+    }
+
+    private function policy(bool $allowsInline): InlineStylePolicy
+    {
+        $policy = $this->createStub(InlineStylePolicy::class);
+        $policy->method('allowsInlineStyles')->willReturn($allowsInline);
+
+        return $policy;
     }
 }

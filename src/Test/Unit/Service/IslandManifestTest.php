@@ -171,4 +171,21 @@ class IslandManifestTest extends TestCase
 
         $this->assertSame([], $names);
     }
+
+    public function testCollectsTheHashOfEveryScriptThatCarriesOne(): void
+    {
+        $map = IslandManifest::collectIntegrity([
+            'Hero.vue' => ['file' => 'Theme/components/home/Hero.js', 'integrity' => 'sha384-hero'],
+            '_pinia.js' => ['file' => 'lib/pinia.js', 'integrity' => 'sha384-pinia'],
+            'unhashed' => ['file' => 'lib/other.js'],
+            'style' => ['file' => 'css/style.css', 'integrity' => 'sha384-css'],
+            'malformed' => ['file' => 'lib/bad.js', 'integrity' => ['nope']],
+            'not an entry' => 'lib/none.js',
+        ]);
+
+        $this->assertSame(
+            ['Theme/components/home/Hero.js' => 'sha384-hero', 'lib/pinia.js' => 'sha384-pinia'],
+            $map
+        );
+    }
 }
