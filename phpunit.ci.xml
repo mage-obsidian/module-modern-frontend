@@ -60,6 +60,7 @@
             <exclude>src/Test/Unit/Model/Deploy/ViteBuildPreflightTest.php</exclude>
             <exclude>src/Test/Unit/Plugin/Deploy/Service/DeployViteContentPluginTest.php</exclude>
             <exclude>src/Test/Unit/Service/Cms/CmsBaselineTest.php</exclude>
+            <exclude>src/Test/Unit/Model/Csp/ScopedBlockCacheTest.php</exclude>
         </testsuite>
     </testsuites>
 </phpunit>

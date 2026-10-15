@@ -224,4 +224,10 @@
             </argument>
         </arguments>
     </type>
+    <preference for="Magento\Csp\Model\BlockCache"
+                type="MageObsidian\ModernFrontend\Model\Csp\ScopedBlockCache"/>
+    <type name="Magento\Csp\Model\Collector\DynamicCollector">
+        <plugin name="mageObsidian_recordBlockPolicies"
+                type="MageObsidian\ModernFrontend\Plugin\Csp\RecordBlockPolicies"/>
+    </type>
 </config>
