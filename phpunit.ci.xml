@@ -40,6 +40,7 @@
             <exclude>src/Test/Unit/Service/Theme/ObsidianThemeDetectorTest.php</exclude>
             <exclude>src/Test/Unit/Plugin/Csp/ForceReportOnlyInHmrTest.php</exclude>
             <exclude>src/Test/Unit/Plugin/Csp/ApplyStrictInlinePolicyTest.php</exclude>
+            <exclude>src/Test/Unit/Service/Csp/PaymentPagesTest.php</exclude>
             <exclude>src/Test/Unit/Model/Config/ConfigProviderTest.php</exclude>
             <exclude>src/Test/Unit/Model/Config/Source/CheckoutLayoutTest.php</exclude>
             <exclude>src/Test/Unit/Service/CriticalCssProviderTest.php</exclude>

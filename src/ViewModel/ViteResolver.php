@@ -10,7 +10,6 @@ declare(strict_types=1);
 namespace MageObsidian\ModernFrontend\ViewModel;
 
 use InvalidArgumentException;
-use Magento\Csp\Model\SubresourceIntegrity\SriEnabledActions;
 use Magento\Framework\App\Request\Http;
 use Magento\Framework\App\RequestInterface;
 use Magento\Framework\Locale\ResolverInterface as LocaleResolver;
@@ -18,6 +17,7 @@ use Magento\Framework\View\Asset\Repository;
 use Magento\Framework\View\Element\Block\ArgumentInterface;
 use MageObsidian\ModernFrontend\Api\Data\ConfigInterface;
 use MageObsidian\ModernFrontend\Model\Config\ConfigProvider;
+use MageObsidian\ModernFrontend\Service\Csp\PaymentPages;
 use MageObsidian\ModernFrontend\Service\EagerIslandRegistry;
 use MageObsidian\ModernFrontend\Service\IslandManifest;
 use MageObsidian\ModernFrontend\Service\Vue\PropsEncoder;
@@ -55,7 +55,7 @@ class ViteResolver implements ArgumentInterface
      * @param LocaleResolver $localeResolver
      * @param EagerIslandRegistry $eagerIslandRegistry
      * @param IslandManifest $islandManifest
-     * @param SriEnabledActions $sriEnabledActions
+     * @param PaymentPages $paymentPages
      */
     public function __construct(
         private readonly Repository $assetRepository,
@@ -64,7 +64,7 @@ class ViteResolver implements ArgumentInterface
         private readonly LocaleResolver $localeResolver,
         private readonly EagerIslandRegistry $eagerIslandRegistry,
         private readonly IslandManifest $islandManifest,
-        private readonly SriEnabledActions $sriEnabledActions
+        private readonly PaymentPages $paymentPages
     ) {
     }
 
@@ -109,7 +109,7 @@ class ViteResolver implements ArgumentInterface
     private function isPaymentPage(): bool
     {
         return $this->request instanceof Http
-            && $this->sriEnabledActions->isPaymentPageAction($this->request->getFullActionName());
+            && $this->paymentPages->isPaymentPage($this->request->getFullActionName());
     }
 
     private function buildFilePath(string $path): string

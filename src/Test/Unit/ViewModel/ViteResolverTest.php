@@ -10,12 +10,12 @@ declare(strict_types=1);
 namespace MageObsidian\ModernFrontend\Test\Unit\ViewModel;
 
 use InvalidArgumentException;
-use Magento\Csp\Model\SubresourceIntegrity\SriEnabledActions;
 use Magento\Framework\App\Request\Http;
 use Magento\Framework\App\RequestInterface;
 use Magento\Framework\Locale\ResolverInterface as LocaleResolver;
 use Magento\Framework\View\Asset\Repository;
 use MageObsidian\ModernFrontend\Model\Config\ConfigProvider;
+use MageObsidian\ModernFrontend\Service\Csp\PaymentPages;
 use MageObsidian\ModernFrontend\Service\EagerIslandRegistry;
 use MageObsidian\ModernFrontend\Service\IslandManifest;
 use MageObsidian\ModernFrontend\ViewModel\ViteResolver;
@@ -78,8 +78,17 @@ class ViteResolverTest extends TestCase
             $locale,
             $this->eagerIslandRegistry,
             $islandManifest,
-            new SriEnabledActions(['checkout' => self::PAYMENT_ACTION])
+            $this->paymentPages(self::PAYMENT_ACTION)
         );
+    }
+
+    private function paymentPages(string ...$actions): PaymentPages
+    {
+        $paymentPages = $this->createStub(PaymentPages::class);
+        $paymentPages->method('isPaymentPage')
+            ->willReturnCallback(static fn (string $action): bool => in_array($action, $actions, true));
+
+        return $paymentPages;
     }
 
     public function testGetViteFileUrlAppendsJsExtensionAndPrefixesGeneratedPath(): void
@@ -128,7 +137,7 @@ class ViteResolverTest extends TestCase
             $locale,
             $this->eagerIslandRegistry,
             $this->createMock(IslandManifest::class),
-            new SriEnabledActions()
+            $this->paymentPages()
         ))->getViteFileUrl('lib/vue');
 
         $this->assertStringNotContainsString("\n", $url);
@@ -256,7 +265,7 @@ class ViteResolverTest extends TestCase
             $this->createStub(LocaleResolver::class),
             $this->eagerIslandRegistry,
             $islandManifest,
-            new SriEnabledActions([self::PAYMENT_ACTION])
+            $this->paymentPages(self::PAYMENT_ACTION)
         );
 
         $this->assertSame([], $resolver->getImportMapIntegrity());

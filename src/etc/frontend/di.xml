@@ -54,6 +54,15 @@
             </argument>
         </arguments>
     </type>
+    <type name="MageObsidian\ModernFrontend\Service\Csp\PaymentPages">
+        <arguments>
+            <argument name="fallbackActions" xsi:type="array">
+                <item name="checkout_index_index" xsi:type="string">checkout_index_index</item>
+                <item name="checkout_onepage_success" xsi:type="string">checkout_onepage_success</item>
+                <item name="multishipping_checkout_billing" xsi:type="string">multishipping_checkout_billing</item>
+            </argument>
+        </arguments>
+    </type>
     <type name="MageObsidian\ModernFrontend\Service\Theme\ObsidianThemeDetector">
         <arguments>
             <argument name="design" xsi:type="object">Magento\Framework\View\DesignInterface\Proxy</argument>
