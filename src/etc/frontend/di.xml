@@ -42,6 +42,18 @@
         <plugin name="mageObsidian_forceReportOnlyCspInHmr"
                 type="MageObsidian\ModernFrontend\Plugin\Csp\ForceReportOnlyInHmr"/>
     </type>
+    <type name="Magento\Csp\Model\Collector\ConfigCollector">
+        <plugin name="mageObsidian_applyStrictInlinePolicy"
+                type="MageObsidian\ModernFrontend\Plugin\Csp\ApplyStrictInlinePolicy"/>
+    </type>
+    <type name="MageObsidian\ModernFrontend\Plugin\Csp\ApplyStrictInlinePolicy">
+        <arguments>
+            <argument name="inlineStylePages" xsi:type="array">
+                <item name="checkout" xsi:type="string">checkout_index_index</item>
+                <item name="multishipping_billing" xsi:type="string">multishipping_checkout_billing</item>
+            </argument>
+        </arguments>
+    </type>
     <type name="MageObsidian\ModernFrontend\Service\Theme\ObsidianThemeDetector">
         <arguments>
             <argument name="design" xsi:type="object">Magento\Framework\View\DesignInterface\Proxy</argument>

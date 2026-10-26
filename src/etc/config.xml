@@ -43,34 +43,5 @@
                 <island_preload>0</island_preload>
             </storefront>
         </mage_obsidian>
-        <!--
-            Every inline script and stylesheet MageObsidian emits goes through
-            SecureHtmlRenderer, and Magento only nonces (scripts) or hashes
-            (styles) them when the configured policy disallows inline. Leaving
-            core's default of 1 means the whole runtime is unreachable the moment
-            a merchant enforces the policy.
-        -->
-        <csp>
-            <policies>
-                <storefront>
-                    <scripts>
-                        <inline>0</inline>
-                    </scripts>
-                    <styles>
-                        <inline>0</inline>
-                    </styles>
-                </storefront>
-                <storefront_checkout_index_index>
-                    <styles>
-                        <inline>1</inline>
-                    </styles>
-                </storefront_checkout_index_index>
-                <storefront_multishipping_checkout_billing>
-                    <styles>
-                        <inline>1</inline>
-                    </styles>
-                </storefront_multishipping_checkout_billing>
-            </policies>
-        </csp>
     </default>
 </config>

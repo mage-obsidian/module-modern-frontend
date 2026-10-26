@@ -25,23 +25,25 @@ final class ConfigDefaultsTest extends TestCase
         self::assertSame('0', trim((string)$value[0]));
     }
 
-    public function testPaymentPagesKeepCoreInlineStyles(): void
+    public function testPaymentPagesLeaveTheirInlineStylesToMagento(): void
     {
         $config = simplexml_load_file(self::CONFIG_FILE);
 
         foreach (['storefront_checkout_index_index', 'storefront_multishipping_checkout_billing'] as $page) {
-            $value = $config->xpath('default/csp/policies/' . $page . '/styles/inline');
-            self::assertCount(1, $value, $page);
-            self::assertSame('1', trim((string)$value[0]), $page);
+            self::assertSame([], $config->xpath('default/csp/policies/' . $page . '/styles/inline'), $page);
         }
     }
 
-    public function testTheStorefrontStillDisallowsInlineStyles(): void
+    public function testTheStorefrontInlinePoliciesAreLeftToMagento(): void
     {
         $config = simplexml_load_file(self::CONFIG_FILE);
-        $value = $config->xpath('default/csp/policies/storefront/styles/inline');
 
-        self::assertCount(1, $value);
-        self::assertSame('0', trim((string)$value[0]));
+        foreach (['scripts', 'styles'] as $directive) {
+            self::assertSame(
+                [],
+                $config->xpath('default/csp/policies/storefront/' . $directive . '/inline'),
+                $directive
+            );
+        }
     }
 }
