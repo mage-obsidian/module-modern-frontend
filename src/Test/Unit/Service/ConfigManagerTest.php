@@ -57,7 +57,7 @@ class ConfigManagerTest extends TestCase
         $manager->generate();
 
         $json = json_decode($this->writes[self::JSON_TMP], true);
-        $this->assertSame('1.1.0', $json['schema_version']);
+        $this->assertSame('1.2.0', $json['schema_version']);
         $this->assertSame('developer', $json['mode']);
         $this->assertSame(['src' => '/src/Vendor/Mod'], $json['modules']['Vendor_Mod']);
         $this->assertSame(['src' => '/src/theme', 'parent' => null], $json['themes']['Vendor/theme']);

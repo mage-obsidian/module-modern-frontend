@@ -13,6 +13,8 @@ use MageObsidian\ModernFrontend\Api\ConfigManagerInterface;
 use MageObsidian\ModernFrontend\Plugin\View\Result\AsyncCssThemePlugin;
 use MageObsidian\ModernFrontend\Service\Theme\ObsidianThemeDetector;
 use Magento\Framework\App\ResponseInterface;
+use Magento\Framework\App\State;
+use Magento\Framework\View\Design\Theme\FlyweightFactory;
 use Magento\Framework\View\Design\ThemeInterface;
 use Magento\Framework\View\DesignInterface;
 use Magento\Framework\View\Result\Layout;
@@ -108,7 +110,9 @@ class AsyncCssThemePluginTest extends TestCase
             new ObsidianThemeDetector(
                 $design,
                 $configManager,
-                $logger ?? $this->createMock(LoggerInterface::class)
+                $logger ?? $this->createMock(LoggerInterface::class),
+                $this->createMock(State::class),
+                $this->createMock(FlyweightFactory::class)
             )
         );
     }

@@ -41,18 +41,28 @@
     <type name="Magento\Csp\Api\ModeConfigManagerInterface">
         <plugin name="mageObsidian_forceReportOnlyCspInHmr"
                 type="MageObsidian\ModernFrontend\Plugin\Csp\ForceReportOnlyInHmr"/>
+        <plugin name="mageObsidian_enforceRecommendedCspPolicy"
+                type="MageObsidian\ModernFrontend\Plugin\Csp\EnforceRecommendedPolicy"/>
+    </type>
+    <type name="Magento\Csp\Model\CompositePolicyCollector">
+        <plugin name="mageObsidian_applyRecommendedCspPolicy"
+                type="MageObsidian\ModernFrontend\Plugin\Csp\ApplyRecommendedPolicy"/>
     </type>
     <type name="Magento\Csp\Model\Collector\ConfigCollector">
         <plugin name="mageObsidian_applyStrictInlinePolicy"
                 type="MageObsidian\ModernFrontend\Plugin\Csp\ApplyStrictInlinePolicy"/>
     </type>
-    <type name="MageObsidian\ModernFrontend\Plugin\Csp\ApplyStrictInlinePolicy">
-        <arguments>
-            <argument name="inlineStylePages" xsi:type="array">
-                <item name="checkout" xsi:type="string">checkout_index_index</item>
-                <item name="multishipping_billing" xsi:type="string">multishipping_checkout_billing</item>
-            </argument>
-        </arguments>
+    <type name="Magento\Csp\Helper\InlineUtil">
+        <plugin name="mageObsidian_authorizeCacheableScriptsByHash"
+                type="MageObsidian\ModernFrontend\Plugin\Csp\AuthorizeCacheableScriptsByHash"/>
+    </type>
+    <type name="Magento\Framework\View\Layout">
+        <plugin name="mageObsidian_recordLayoutCacheability"
+                type="MageObsidian\ModernFrontend\Plugin\Csp\RecordLayoutCacheability"/>
+    </type>
+    <type name="Magento\Framework\App\PageCache\Kernel">
+        <plugin name="mageObsidian_keepPoliciesWithBuiltinPageCache"
+                type="MageObsidian\ModernFrontend\Plugin\Csp\KeepPoliciesWithBuiltinPageCache"/>
     </type>
     <type name="MageObsidian\ModernFrontend\Service\Csp\PaymentPages">
         <arguments>

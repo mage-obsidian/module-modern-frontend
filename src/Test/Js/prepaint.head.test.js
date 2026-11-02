@@ -51,7 +51,9 @@ const config = (over = {}) => ({
     ...over,
 });
 
-function run({ sections, syncedVersion = "v1", cookie = `${VERSION_COOKIE}=v1; ${SESSION_COOKIE}=abc`, constructable = false, ...over }) {
+const PREPAINT_BLOCK = 'script[type="application/json"][data-mage-obsidian-config="prepaint"]';
+
+function run({ sections, syncedVersion = "v1", cookie = `${VERSION_COOKIE}=v1; ${SESSION_COOKIE}=abc`, constructable = false, block, ...over }) {
     const attributes = {};
     const properties = {};
     const css = [];
@@ -92,8 +94,10 @@ function run({ sections, syncedVersion = "v1", cookie = `${VERSION_COOKIE}=v1; $
         },
     };
 
+    document.querySelector = (selector) =>
+        selector === PREPAINT_BLOCK ? { textContent: block ?? JSON.stringify(config(over)) } : null;
+
     const scope = {
-        __MAGE_OBSIDIAN_PREPAINT__: config(over),
         localStorage: {
             getItem: (key) => (storage[key] === undefined ? null : storage[key]),
         },
@@ -123,6 +127,13 @@ function run({ sections, syncedVersion = "v1", cookie = `${VERSION_COOKIE}=v1; $
 }
 
 describe("pre-paint runtime", () => {
+    it("publishes nothing when its data block is not JSON", () => {
+        const { published, created } = run({ sections: { cart: { summary_count: 2 } }, block: "{storageKey:" });
+
+        expect(published).toBe(false);
+        expect(created).toBe(0);
+    });
+
     it("publishes a counter and a flag the stylesheet can render", () => {
         const { attributes, properties } = run({
             sections: { cart: { summary_count: 2 }, customer: { firstname: "Jean" } },

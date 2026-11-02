@@ -12,6 +12,7 @@ namespace MageObsidian\ModernFrontend\Block;
 use Magento\Framework\View\Element\AbstractBlock;
 use Magento\Framework\View\Element\Context;
 use Magento\Framework\View\Helper\SecureHtmlRenderer;
+use MageObsidian\ModernFrontend\Service\PageConfigRenderer;
 use MageObsidian\ModernFrontend\Service\RuntimeScriptReader;
 
 class SectionPrefetchRuntime extends AbstractBlock
@@ -24,6 +25,7 @@ class SectionPrefetchRuntime extends AbstractBlock
 
     public function __construct(
         Context $context,
+        private readonly PageConfigRenderer $pageConfigRenderer,
         private readonly SecureHtmlRenderer $secureRenderer,
         private readonly RuntimeScriptReader $scriptReader,
         array $data = []
@@ -59,17 +61,10 @@ class SectionPrefetchRuntime extends AbstractBlock
             return '';
         }
 
-        $config = json_encode(
-            ['url' => $this->getSectionLoadUrl($sections), 'sections' => $sections],
-            JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_THROW_ON_ERROR
-        );
-
-        return $this->secureRenderer->renderTag(
-            'script',
-            [],
-            "window.__MAGE_OBSIDIAN_SECTION_PREFETCH_CONFIG__ = {$config};" . $script,
-            false
-        );
+        return $this->pageConfigRenderer->render(
+            PageConfigRenderer::SECTION_PREFETCH,
+            ['url' => $this->getSectionLoadUrl($sections), 'sections' => $sections]
+        ) . $this->secureRenderer->renderTag('script', [], $script, false);
     }
 
     /**

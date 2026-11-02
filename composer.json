@@ -51,7 +51,8 @@
         }
     },
     "conflict": {
-        "mage-obsidian/component-modern-frontend": "<2.7.0"
+        "mage-obsidian/component-modern-frontend": "<4.3",
+        "mage-obsidian/module-storefront": "<4.3"
     },
     "extra": {
         "branch-alias": {

@@ -24,7 +24,7 @@
     "properties": {
         "schema_version": {
             "type": "string",
-            "enum": ["1.1.0"]
+            "enum": ["1.2.0"]
         },
         "mode": {
             "type": "string",

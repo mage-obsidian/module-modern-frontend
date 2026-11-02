@@ -5,11 +5,23 @@
 (function (scope) {
     "use strict";
 
-    var config = scope && scope.__MAGE_OBSIDIAN_PREPAINT__;
     var doc = scope && scope.document;
     var root = doc && doc.documentElement;
+    var config = pageConfig("prepaint");
     if (!config || !root) {
         return;
+    }
+
+    function pageConfig(name) {
+        var block =
+            doc && typeof doc.querySelector === "function"
+                ? doc.querySelector('script[type="application/json"][data-mage-obsidian-config="' + name + '"]')
+                : null;
+        try {
+            return block ? JSON.parse(block.textContent) : null;
+        } catch (e) {
+            return null;
+        }
     }
 
     function cookie(name) {

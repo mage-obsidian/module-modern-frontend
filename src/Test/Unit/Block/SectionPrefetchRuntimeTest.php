@@ -14,6 +14,7 @@ use Magento\Framework\UrlInterface;
 use Magento\Framework\View\Element\Context;
 use Magento\Framework\View\Helper\SecureHtmlRenderer;
 use MageObsidian\ModernFrontend\Block\SectionPrefetchRuntime;
+use MageObsidian\ModernFrontend\Service\PageConfigRenderer;
 use MageObsidian\ModernFrontend\Service\RuntimeScriptReader;
 use PHPUnit\Framework\TestCase;
 
@@ -45,19 +46,43 @@ class SectionPrefetchRuntimeTest extends TestCase
         $this->assertSame('', $this->render($this->buildBlock([])));
     }
 
-    public function testTheInlinedScriptCarriesNoLicenseHeader(): void
+    public function testEmitsTheConfigAsADataBlockAheadOfAScriptWithoutIt(): void
     {
         $renderer = $this->createMock(SecureHtmlRenderer::class);
         $renderer->expects($this->once())
             ->method('renderTag')
             ->with('script', [], $this->callback(
-                static fn(string $content): bool => str_contains($content, '__MAGE_OBSIDIAN_SECTION_PREFETCH_CONFIG__')
+                static fn(string $content): bool => !str_contains($content, 'customer/section/load')
                     && !str_contains($content, 'SPDX')
                     && !str_contains($content, 'This file is part of')
             ), false)
-            ->willReturn('<script>…</script>');
+            ->willReturn('<script>code</script>');
 
-        $this->assertSame('<script>…</script>', $this->render($this->buildBlock(['cart'], $renderer)));
+        $this->assertSame(
+            '<script type="application/json" data-mage-obsidian-config="section-prefetch-config">'
+            . '{"url":"https:\\/\\/example.test\\/customer\\/section\\/load\\/","sections":["cart"]}</script>'
+            . '<script>code</script>',
+            $this->render($this->buildBlock(['cart'], $renderer))
+        );
+    }
+
+    public function testTheScriptIsTheSameWhateverTheSections(): void
+    {
+        $scripts = [];
+        $renderer = $this->createStub(SecureHtmlRenderer::class);
+        $renderer->method('renderTag')->willReturnCallback(
+            static function (string $tag, array $attributes, string $content) use (&$scripts): string {
+                $scripts[] = $content;
+
+                return '';
+            }
+        );
+
+        $this->render($this->buildBlock(['cart'], $renderer));
+        $this->render($this->buildBlock(['obsidian-checkout', 'customer'], $renderer));
+
+        $this->assertCount(2, $scripts);
+        $this->assertSame($scripts[0], $scripts[1]);
     }
 
     private function render(SectionPrefetchRuntime $block): string
@@ -79,6 +104,7 @@ class SectionPrefetchRuntimeTest extends TestCase
 
         return new SectionPrefetchRuntime(
             $context,
+            new PageConfigRenderer(),
             $renderer ?? $this->createStub(SecureHtmlRenderer::class),
             new RuntimeScriptReader($moduleReader),
             ['sections' => $sections]

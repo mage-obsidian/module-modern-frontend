@@ -12,6 +12,7 @@ namespace MageObsidian\ModernFrontend\Block;
 use Magento\Framework\View\Element\AbstractBlock;
 use Magento\Framework\View\Element\Context;
 use Magento\Framework\View\Helper\SecureHtmlRenderer;
+use MageObsidian\ModernFrontend\Service\PageConfigRenderer;
 use MageObsidian\ModernFrontend\Service\RuntimeScriptReader;
 use MageObsidian\ModernFrontend\ViewModel\PrePaintConfig;
 
@@ -24,6 +25,7 @@ class PrePaintRuntime extends AbstractBlock
     public function __construct(
         Context $context,
         private readonly PrePaintConfig $prePaintConfig,
+        private readonly PageConfigRenderer $pageConfigRenderer,
         private readonly SecureHtmlRenderer $secureRenderer,
         private readonly RuntimeScriptReader $scriptReader,
         array $data = []
@@ -42,16 +44,7 @@ class PrePaintRuntime extends AbstractBlock
             return '';
         }
 
-        $config = json_encode(
-            $this->prePaintConfig->getConfig(),
-            JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_THROW_ON_ERROR
-        );
-
-        return $this->secureRenderer->renderTag(
-            'script',
-            [],
-            "window.__MAGE_OBSIDIAN_PREPAINT__ = {$config};" . $script,
-            false
-        );
+        return $this->pageConfigRenderer->render(PageConfigRenderer::PREPAINT, $this->prePaintConfig->getConfig())
+            . $this->secureRenderer->renderTag('script', [], $script, false);
     }
 }

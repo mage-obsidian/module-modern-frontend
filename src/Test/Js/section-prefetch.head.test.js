@@ -15,10 +15,16 @@ const SOURCE = readFileSync(
 const URL_CHECKOUT = "/customer/section/load/?sections=obsidian-checkout&force_new_section_timestamp=true";
 const PAYLOAD = { "obsidian-checkout": { quote: { subtotal: "$38.00" } } };
 
-function run({ config, response = { ok: true, json: async () => PAYLOAD } } = {}) {
+const BLOCK = 'script[type="application/json"][data-mage-obsidian-config="section-prefetch-config"]';
+
+function documentWith(text) {
+    return { querySelector: (selector) => (selector === BLOCK && text !== undefined ? { textContent: text } : null) };
+}
+
+function run({ config, text = config === undefined ? undefined : JSON.stringify(config), response = { ok: true, json: async () => PAYLOAD } } = {}) {
     const calls = [];
     const scope = {
-        __MAGE_OBSIDIAN_SECTION_PREFETCH_CONFIG__: config,
+        document: documentWith(text),
         fetch: (url, options) => {
             calls.push({ url, options });
 
@@ -80,9 +86,32 @@ describe("section-prefetch.head.js", () => {
     });
 
     it("does not throw where fetch is unavailable", () => {
-        const scope = { __MAGE_OBSIDIAN_SECTION_PREFETCH_CONFIG__: { url: URL_CHECKOUT, sections: ["a"] } };
+        const scope = { document: documentWith(JSON.stringify({ url: URL_CHECKOUT, sections: ["a"] })) };
 
         expect(() => new Function("window", SOURCE)(scope)).not.toThrow();
+        expect(scope.__MAGE_OBSIDIAN_SECTION_PREFETCH__).toBeUndefined();
+    });
+
+    it("reads its config from the data block, not from a global", () => {
+        const calls = [];
+        const scope = {
+            document: documentWith(undefined),
+            __MAGE_OBSIDIAN_SECTION_PREFETCH_CONFIG__: { url: URL_CHECKOUT, sections: ["a"] },
+            fetch: (url) => {
+                calls.push(url);
+
+                return Promise.resolve({ ok: true, json: async () => PAYLOAD });
+            },
+        };
+        new Function("window", SOURCE)(scope);
+
+        expect(calls).toEqual([]);
+    });
+
+    it("does nothing with a data block that is not JSON", () => {
+        const { calls, scope } = run({ text: "{url:" });
+
+        expect(calls).toEqual([]);
         expect(scope.__MAGE_OBSIDIAN_SECTION_PREFETCH__).toBeUndefined();
     });
 });

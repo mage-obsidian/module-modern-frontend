@@ -13,6 +13,7 @@ use Magento\Framework\Module\Dir\Reader;
 use Magento\Framework\View\Element\Context;
 use Magento\Framework\View\Helper\SecureHtmlRenderer;
 use MageObsidian\ModernFrontend\Block\PrePaintRuntime;
+use MageObsidian\ModernFrontend\Service\PageConfigRenderer;
 use MageObsidian\ModernFrontend\Service\RuntimeScriptReader;
 use MageObsidian\ModernFrontend\ViewModel\PrePaintConfig;
 use PHPUnit\Framework\TestCase;
@@ -27,19 +28,42 @@ class PrePaintRuntimeTest extends TestCase
         }
     }
 
-    public function testTheInlinedScriptCarriesItsConfigAndNoLicenseHeader(): void
+    public function testEmitsTheConfigAsADataBlockAheadOfAScriptWithoutIt(): void
     {
         $renderer = $this->createMock(SecureHtmlRenderer::class);
         $renderer->expects($this->once())
             ->method('renderTag')
             ->with('script', [], $this->callback(
-                static fn(string $content): bool => str_starts_with($content, 'window.__MAGE_OBSIDIAN_PREPAINT__ = {"storageKey":"mage-cache-storage"};')
+                static fn(string $content): bool => !str_contains($content, 'mage-cache-storage')
                     && !str_contains($content, 'SPDX')
                     && !str_contains($content, 'This file is part of')
             ), false)
-            ->willReturn('<script>…</script>');
+            ->willReturn('<script>code</script>');
 
-        $this->assertSame('<script>…</script>', $this->render($renderer, ['storageKey' => 'mage-cache-storage']));
+        $this->assertSame(
+            '<script type="application/json" data-mage-obsidian-config="prepaint">'
+            . '{"storageKey":"mage-cache-storage"}</script><script>code</script>',
+            $this->render($renderer, ['storageKey' => 'mage-cache-storage'])
+        );
+    }
+
+    public function testTheScriptIsTheSameWhateverTheConfig(): void
+    {
+        $scripts = [];
+        $renderer = $this->createStub(SecureHtmlRenderer::class);
+        $renderer->method('renderTag')->willReturnCallback(
+            static function (string $tag, array $attributes, string $content) use (&$scripts): string {
+                $scripts[] = $content;
+
+                return '';
+            }
+        );
+
+        $this->render($renderer, ['storageKey' => 'mage-cache-storage']);
+        $this->render($renderer, ['storageKey' => 'another-store', 'lifetime' => 60]);
+
+        $this->assertCount(2, $scripts);
+        $this->assertSame($scripts[0], $scripts[1]);
     }
 
     public function testRendersNothingWithoutConfig(): void
@@ -62,6 +86,7 @@ class PrePaintRuntimeTest extends TestCase
         $block = new PrePaintRuntime(
             $this->createStub(Context::class),
             $prePaintConfig,
+            new PageConfigRenderer(),
             $renderer,
             new RuntimeScriptReader($moduleReader)
         );

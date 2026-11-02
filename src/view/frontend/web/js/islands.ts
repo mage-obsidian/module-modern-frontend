@@ -26,6 +26,7 @@ import islandComponents from 'mage-obsidian/runtime/islandComponents.ts';
 import { diffHydration, formatMismatch } from 'mage-obsidian/runtime/hydrationDiff.ts';
 import { LifecycleEvent, type IslandEvent } from 'mage-obsidian/runtime/lifecycleEvents.ts';
 import { MutationPhase } from 'mage-obsidian/runtime/mutationEvent.ts';
+import { publishPageConfigs } from 'mage-obsidian/runtime/pageConfig.ts';
 import events from 'MageObsidian_ModernFrontend::js/events';
 import { announcePageReady, bindPageLifecycle } from 'MageObsidian_ModernFrontend::js/lifecycle';
 
@@ -122,6 +123,7 @@ function announce(phase: MutationPhase, detail: IslandAnnouncement): void {
 }
 
 async function start(): Promise<void> {
+    publishPageConfigs();
     bindPageLifecycle();
 
     const markers = document.querySelectorAll<HTMLElement>('[data-mage-island]');

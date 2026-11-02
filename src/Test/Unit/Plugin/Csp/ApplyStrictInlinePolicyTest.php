@@ -57,23 +57,51 @@ class ApplyStrictInlinePolicyTest extends TestCase
     }
 
     #[DataProvider('paymentPages')]
-    public function testPaymentPagesKeepInlineStylesButNotInlineScripts(string $page): void
+    public function testPaymentPagesForbidInlineScriptsAndStylesByDefault(string $page): void
     {
         $result = $this->collect(true, $page, [
             $this->fetch('script-src', inline: true),
-            $this->fetch('style-src', inline: false),
+            $this->fetch('style-src', inline: true),
         ]);
 
         $this->assertFalse($this->policy($result, 'script-src')->isInlineAllowed());
-        $this->assertTrue($this->policy($result, 'style-src')->isInlineAllowed());
+        $this->assertFalse($this->policy($result, 'style-src')->isInlineAllowed());
+    }
+
+    public function testAPageDeclaredInCodeKeepsInlineStylesAndNoOtherPageDoes(): void
+    {
+        $inlineStylesOn = fn (string $page): bool => $this->policy(
+            $this->collect(true, $page, [$this->fetch('style-src', inline: false)], [], ['checkout_index_index']),
+            'style-src'
+        )->isInlineAllowed();
+
+        $this->assertTrue($inlineStylesOn('checkout_index_index'));
+        $this->assertFalse($inlineStylesOn('multishipping_checkout_billing'));
+        $this->assertFalse($inlineStylesOn('cms_index_index'));
+    }
+
+    public function testNoStoreConfigurationAllowsInlineStylesOnAPageTheCodeDidNotDeclare(): void
+    {
+        $result = $this->collect(true, 'checkout_index_index', [$this->fetch('style-src', inline: true)], [
+            'csp/policies/storefront_checkout_index_index/styles/inline' => '1',
+            'mage_obsidian/csp/inline_style_pages' => 'checkout_index_index',
+        ]);
+
+        $this->assertFalse($this->policy($result, 'style-src')->isInlineAllowed());
     }
 
     #[DataProvider('paymentPages')]
-    public function testAPaymentPageTheStoreConfiguredItselfKeepsItsOwnStylePolicy(string $page): void
+    public function testAPageDeclaredInCodeKeepsTheStylePolicyTheStoreConfiguredForIt(string $page): void
     {
         $styles = $this->fetch('style-src', inline: false);
 
-        $result = $this->collect(true, $page, [$styles], ['csp/policies/storefront_' . $page . '/styles/inline' => '0']);
+        $result = $this->collect(
+            true,
+            $page,
+            [$styles],
+            ['csp/policies/storefront_' . $page . '/styles/inline' => '0'],
+            self::PAYMENT_PAGES
+        );
 
         $this->assertSame($styles, $this->policy($result, 'style-src'));
     }
@@ -127,8 +155,13 @@ class ApplyStrictInlinePolicyTest extends TestCase
         $this->assertSame($scripts, $this->policy($result, 'script-src'));
     }
 
-    private function collect(bool $obsidianTheme, string $page, array $policies, array $config = []): array
-    {
+    private function collect(
+        bool $obsidianTheme,
+        string $page,
+        array $policies,
+        array $config = [],
+        array $inlineStylePages = []
+    ): array {
         $detector = $this->createStub(ObsidianThemeDetector::class);
         $detector->method('isActive')->willReturn($obsidianTheme);
         $request = $this->createStub(Http::class);
@@ -136,7 +169,7 @@ class ApplyStrictInlinePolicyTest extends TestCase
         $scopeConfig = $this->createStub(ScopeConfigInterface::class);
         $scopeConfig->method('getValue')->willReturnCallback(static fn (string $path) => $config[$path] ?? null);
 
-        return (new ApplyStrictInlinePolicy($detector, $request, $scopeConfig, self::PAYMENT_PAGES))
+        return (new ApplyStrictInlinePolicy($detector, $request, $scopeConfig, $inlineStylePages))
             ->afterCollect($this->createStub(ConfigCollector::class), $policies);
     }
 

@@ -34,6 +34,11 @@ class BlockPolicyFrames
         return array_key_exists($identifier, $this->frames);
     }
 
+    public function hasOpen(): bool
+    {
+        return $this->frames !== [];
+    }
+
     public function record(PolicyInterface $policy): void
     {
         if (!$policy instanceof FetchPolicy || $this->frames === []) {
